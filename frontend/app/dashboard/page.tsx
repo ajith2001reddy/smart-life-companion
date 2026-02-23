@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import WeatherCard from "@/components/WeatherCard";
 import { useAuth } from "@/context/AuthContext";
-
+import type { Variants } from "framer-motion";
 type Stats = {
     performanceScore: number;
     weeklyVolume: number;

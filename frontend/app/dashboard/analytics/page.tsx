@@ -120,6 +120,7 @@ export default function AnalyticsPage() {
 
     // ── NEW: Export as plain text report ──
     function exportReport() {
+        if (!data) return;
         setExportLoading(true);
         const lines = [
             "SMART LIFE — WEEKLY ANALYTICS REPORT",
