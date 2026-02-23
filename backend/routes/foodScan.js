@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const auth = require("../middleware/auth");
-const Nutrition = require("../models/Nutrition");
+const Nutrition = require("../models/nutrition");
 const OpenAI = require("openai");
 
 const router = express.Router();
