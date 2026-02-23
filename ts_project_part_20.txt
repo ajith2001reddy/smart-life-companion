@@ -1,0 +1,673 @@
+TS PROJECT PART 20 of 20
+==============================
+--- FILE: .\frontend\.env.local ---
+NEXT_PUBLIC_API_URL=http://10.0.0.49:5000
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyAcVOlFMr75LK2vzsUVhF_gQkVxQdSUhSQ
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=smart-life-789fd.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=smart-life-789fd
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=smart-life-789fd.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=862342204037
+NEXT_PUBLIC_FIREBASE_APP_ID=1:862342204037:web:41fa992c3b7abbe14477ec
+--- END OF .\frontend\.env.local ---
+
+--- FILE: .\frontend\app\dashboard\Earth\page.tsx ---
+﻿"use client";
+
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { OrbitControls, Stars } from "@react-three/drei";
+import { Suspense, useRef, useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import * as THREE from "three";
+
+/* ================= TYPES ================= */
+
+type WeatherData = {
+    location: string;
+    temperature: number;
+    condition: string;
+    description: string;
+    humidity: number;
+    windSpeed: number;
+    lat: number;
+    lon: number;
+};
+
+type PinnedLocation = {
+    id: string;
+    name: string;
+    lat: number;
+    lon: number;
+    weather?: WeatherData;
+};
+
+/* ================= AQI MOCK (frontend-only estimate) ================= */
+function estimateAQI(weather: WeatherData): { aqi: number; label: string; color: string } {
+    // Simple heuristic: humidity + wind affect perceived air quality
+    const base = 30 + weather.humidity * 0.3 - weather.windSpeed * 2;
+    const aqi = Math.max(10, Math.min(300, Math.round(base)));
+    if (aqi <= 50) return { aqi, label: "Good", color: "#c8ff00" };
+    if (aqi <= 100) return { aqi, label: "Moderate", color: "#FFB300" };
+    if (aqi <= 150) return { aqi, label: "Sensitive", color: "#FF6B00" };
+    return { aqi, label: "Unhealthy", color: "#ff4d6d" };
+}
+
+/* ================= HELPERS ================= */
+
+function latLonToVec3(lat: number, lon: number, r: number) {
+    const phi = (90 - lat) * (Math.PI / 180);
+    const theta = (lon + 180) * (Math.PI / 180);
+    return new THREE.Vector3(
+        -r * Math.sin(phi) * Math.cos(theta),
+        r * Math.cos(phi),
+        r * Math.sin(phi) * Math.sin(theta)
+    );
+}
+
+/* ================= GLOBE ================= */
+
+function Globe({ onClick }: { onClick: (lat: number, lon: number) => void }) {
+    const [earthTex, nightTex, cloudTex] = useLoader(THREE.TextureLoader, [
+        "/textures/earth.jpg",
+        "/textures/earth_lights.png",
+        "/textures/earth_clouds.png",
+    ]);
+
+    [earthTex, nightTex, cloudTex].forEach((t) => {
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.anisotropy = 8;
+    });
+
+    const cloudRef = useRef<THREE.Mesh>(null!);
+
+    useFrame(() => {
+        if (cloudRef.current) cloudRef.current.rotation.y += 0.00025;
+    });
+
+    function handleClick(e: any) {
+        e.stopPropagation();
+        const pt = e.point.clone().normalize();
+        const lat = Math.asin(Math.max(-1, Math.min(1, pt.y))) * (180 / Math.PI);
+        let lon = Math.atan2(-pt.z, pt.x) * (180 / Math.PI);
+        lon = lon - 90;
+        if (lon < -180) lon += 360;
+        if (lon > 180) lon -= 360;
+        onClick(lat, lon);
+    }
+
+    return (
+        <>
+            <ambientLight intensity={0.2} />
+            <directionalLight position={[5, 2, 5]} intensity={2} />
+
+            <mesh onClick={handleClick}>
+                <sphereGeometry args={[2, 128, 128]} />
+                <meshPhongMaterial
+                    map={earthTex}
+                    emissiveMap={nightTex}
+                    emissive={new THREE.Color(0xffffff)}
+                    emissiveIntensity={0.8}
+                    shininess={12}
+                />
+            </mesh>
+
+            <mesh ref={cloudRef}>
+                <sphereGeometry args={[2.02, 128, 128]} />
+                <meshPhongMaterial map={cloudTex} transparent opacity={0.4} depthWrite={false} />
+            </mesh>
+        </>
+    );
+}
+
+/* ================= WEATHER ICON ================= */
+
+function WeatherIcon({ condition, size = "md" }: { condition: string; size?: "sm" | "md" | "lg" }) {
+    const c = condition?.toLowerCase() ?? "";
+    const icon =
+        c.includes("clear") || c.includes("sun") ? "☀" :
+            c.includes("cloud") ? "☁" :
+                c.includes("rain") || c.includes("drizzle") ? "⛆" :
+                    c.includes("snow") ? "❄" :
+                        c.includes("storm") || c.includes("thunder") ? "⚡" :
+                            c.includes("fog") || c.includes("mist") ? "◌" : "◈";
+
+    const sizeClass = size === "sm" ? "text-sm" : size === "lg" ? "text-3xl" : "text-xl";
+    return <span className={sizeClass}>{icon}</span>;
+}
+
+/* ================= STAT PILL ================= */
+
+function Stat({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex flex-col gap-0.5">
+            <span style={{ color: "rgba(255,255,255,0.32)", fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>{label}</span>
+            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: "13px", fontFamily: "monospace", fontWeight: 600 }}>{value}</span>
+        </div>
+    );
+}
+
+/* ================= PAGE ================= */
+
+export default function EarthPage() {
+    const [weather, setWeather] = useState<WeatherData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [pins, setPins] = useState<PinnedLocation[]>([]);
+    const [showPins, setShowPins] = useState(false);
+    const [showCompare, setShowCompare] = useState(false);
+    const [compareLoading, setCompareLoading] = useState(false);
+    const base = process.env.NEXT_PUBLIC_API_URL;
+
+    // Load pinned locations from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem("smartlife-pins");
+        if (saved) setPins(JSON.parse(saved));
+    }, []);
+
+    const fetchWeather = useCallback(async (lat: number, lon: number): Promise<WeatherData | null> => {
+        if (!base) return null;
+        try {
+            const res = await fetch(`${base}/api/weather?lat=${lat}&lon=${lon}`);
+            if (!res.ok) throw new Error("Weather fetch failed");
+            return await res.json();
+        } catch (err) {
+            console.error("Weather error:", err);
+            return null;
+        }
+    }, [base]);
+
+    async function handleGlobeClick(lat: number, lon: number) {
+        setLoading(true);
+        const data = await fetchWeather(lat, lon);
+        if (data) setWeather(data);
+        setLoading(false);
+    }
+
+    function pinLocation() {
+        if (!weather) return;
+        const newPin: PinnedLocation = {
+            id: Date.now().toString(),
+            name: weather.location,
+            lat: weather.lat,
+            lon: weather.lon,
+            weather,
+        };
+        const updated = [newPin, ...pins.filter((p) => p.name !== weather.location)].slice(0, 6);
+        setPins(updated);
+        localStorage.setItem("smartlife-pins", JSON.stringify(updated));
+    }
+
+    function removePin(id: string) {
+        const updated = pins.filter((p) => p.id !== id);
+        setPins(updated);
+        localStorage.setItem("smartlife-pins", JSON.stringify(updated));
+    }
+
+    async function refreshCompare() {
+        if (pins.length === 0) return;
+        setCompareLoading(true);
+        const updated = await Promise.all(
+            pins.map(async (pin) => {
+                const w = await fetchWeather(pin.lat, pin.lon);
+                return { ...pin, weather: w ?? pin.weather };
+            })
+        );
+        setPins(updated);
+        localStorage.setItem("smartlife-pins", JSON.stringify(updated));
+        setCompareLoading(false);
+    }
+
+    const aqi = weather ? estimateAQI(weather) : null;
+    const isPinned = weather ? pins.some((p) => p.name === weather.location) : false;
+
+    return (
+        <div className="relative w-full h-[calc(100vh-56px)]" style={{ background: "#000005" }}>
+
+            {/* Vignette */}
+            <div className="pointer-events-none absolute inset-0 z-10" style={{ background: "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,5,0.7) 100%)" }} />
+
+            {/* Top-left hint */}
+            <div className="absolute top-5 left-5 z-20 pointer-events-none" style={{ userSelect: "none" }}>
+                <p style={{ fontSize: "9px", letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", fontWeight: 700, fontFamily: "monospace" }}>
+                    Click anywhere on the globe
+                </p>
+            </div>
+
+            {/* ── NEW: Top-right control bar ── */}
+            <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
+                {pins.length > 0 && (
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => { setShowCompare(true); refreshCompare(); }}
+                        style={{
+                            background: "rgba(4,4,12,0.82)",
+                            backdropFilter: "blur(20px)",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            borderRadius: "12px",
+                            padding: "8px 14px",
+                            fontSize: "11px",
+                            color: "rgba(255,255,255,0.6)",
+                            cursor: "pointer",
+                            letterSpacing: "0.05em",
+                        }}
+                    >
+                        📊 Compare ({pins.length})
+                    </motion.button>
+                )}
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowPins(true)}
+                    style={{
+                        background: "rgba(4,4,12,0.82)",
+                        backdropFilter: "blur(20px)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: "12px",
+                        padding: "8px 14px",
+                        fontSize: "11px",
+                        color: "rgba(255,255,255,0.6)",
+                        cursor: "pointer",
+                        letterSpacing: "0.05em",
+                    }}
+                >
+                    📍 Pins {pins.length > 0 ? `(${pins.length})` : ""}
+                </motion.button>
+            </div>
+
+            {/* Canvas */}
+            <Canvas camera={{ position: [0, 0, 6], fov: 45 }} className="w-full h-full">
+                <Suspense fallback={null}>
+                    <Stars radius={80} depth={50} count={5000} factor={4} saturation={0} fade />
+                    <Globe onClick={handleGlobeClick} />
+                    <OrbitControls enableZoom enablePan={false} />
+                </Suspense>
+            </Canvas>
+
+            {/* Loading pulse */}
+            <AnimatePresence>
+                {loading && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+                    >
+                        <motion.div
+                            animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.8, 0.4] }}
+                            transition={{ duration: 1.4, repeat: Infinity }}
+                            style={{ width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(200,255,0,0.6)" }}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── WEATHER CARD (enhanced with AQI + pin button) ── */}
+            <AnimatePresence>
+                {weather && !loading && (
+                    <motion.div
+                        key={weather.location}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="absolute z-20"
+                        style={{
+                            bottom: "clamp(16px, 4vw, 40px)",
+                            left: "clamp(12px, 3vw, 24px)",
+                            width: "clamp(260px, 30vw, 360px)",
+                        }}
+                    >
+                        <div style={{
+                            background: "rgba(4,4,12,0.88)",
+                            backdropFilter: "blur(24px) saturate(1.5)",
+                            border: "1px solid rgba(255,255,255,0.09)",
+                            borderRadius: "20px",
+                            padding: "20px 24px 22px",
+                            boxShadow: "0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)",
+                        }}>
+                            {/* Location + pin button */}
+                            <div className="flex items-start justify-between mb-4">
+                                <div>
+                                    <p style={{ fontSize: "9px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 4, fontFamily: "monospace" }}>
+                                        Current Location
+                                    </p>
+                                    <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+                                        {weather.location}
+                                    </h2>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <WeatherIcon condition={weather.condition} size="lg" />
+                                    <motion.button
+                                        whileHover={{ scale: 1.1 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={pinLocation}
+                                        title={isPinned ? "Already pinned" : "Pin this location"}
+                                        style={{
+                                            background: isPinned ? "rgba(200,255,0,0.15)" : "rgba(255,255,255,0.05)",
+                                            border: `1px solid ${isPinned ? "rgba(200,255,0,0.3)" : "rgba(255,255,255,0.12)"}`,
+                                            borderRadius: "10px",
+                                            padding: "6px 10px",
+                                            fontSize: "14px",
+                                            cursor: "pointer",
+                                            color: isPinned ? "#c8ff00" : "rgba(255,255,255,0.4)",
+                                        }}
+                                    >
+                                        {isPinned ? "📍" : "📌"}
+                                    </motion.button>
+                                </div>
+                            </div>
+
+                            {/* Temperature */}
+                            <div className="flex items-end gap-2 mb-1">
+                                <span style={{ fontSize: "52px", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1, color: "#fff", fontFamily: "monospace" }}>
+                                    {weather.temperature}
+                                </span>
+                                <span style={{ fontSize: "22px", fontWeight: 700, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>°C</span>
+                            </div>
+
+                            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", marginBottom: 18, textTransform: "capitalize", letterSpacing: "0.02em" }}>
+                                {weather.description}
+                            </p>
+
+                            <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", marginBottom: 16 }} />
+
+                            <div className="flex gap-5 flex-wrap mb-4">
+                                <Stat label="Humidity" value={`${weather.humidity}%`} />
+                                <Stat label="Wind" value={`${weather.windSpeed} m/s`} />
+                                <Stat label="Coords" value={`${weather.lat.toFixed(1)}°, ${weather.lon.toFixed(1)}°`} />
+                            </div>
+
+                            {/* ── NEW: AQI Indicator ── */}
+                            {aqi && (
+                                <>
+                                    <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", marginBottom: 14 }} />
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p style={{ fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 4 }}>
+                                                Air Quality Index
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <span style={{ fontSize: "20px", fontWeight: 800, color: aqi.color, fontFamily: "monospace" }}>{aqi.aqi}</span>
+                                                <span style={{ fontSize: "12px", color: aqi.color, fontWeight: 600 }}>{aqi.label}</span>
+                                            </div>
+                                        </div>
+                                        {/* AQI mini bar */}
+                                        <div style={{ width: 80, height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 4, overflow: "hidden" }}>
+                                            <motion.div
+                                                style={{ height: "100%", background: aqi.color, borderRadius: 4 }}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${Math.min((aqi.aqi / 300) * 100, 100)}%` }}
+                                                transition={{ duration: 1 }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.2)", marginTop: 6 }}>
+                                        * Estimated from humidity & wind data
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── NEW: Pinned Locations Panel ── */}
+            <AnimatePresence>
+                {showPins && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-30 flex items-center justify-center p-4"
+                        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+                        onClick={(e) => e.target === e.currentTarget && setShowPins(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.93, y: 16 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.93, y: 16 }}
+                            style={{
+                                background: "rgba(6,6,18,0.95)",
+                                border: "1px solid rgba(255,255,255,0.10)",
+                                borderRadius: "20px",
+                                padding: "24px",
+                                width: "100%",
+                                maxWidth: "420px",
+                                maxHeight: "80vh",
+                                overflowY: "auto",
+                            }}
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>Pinned Locations</h3>
+                                <button onClick={() => setShowPins(false)} style={{ color: "rgba(255,255,255,0.3)", fontSize: "18px", cursor: "pointer", background: "none", border: "none" }}>✕</button>
+                            </div>
+
+                            {pins.length === 0 ? (
+                                <div className="text-center py-10">
+                                    <p style={{ fontSize: "32px", marginBottom: 12 }}>📌</p>
+                                    <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>
+                                        Click on the globe to view weather, then pin locations to save them here.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {pins.map((pin) => (
+                                        <motion.div
+                                            key={pin.id}
+                                            whileHover={{ scale: 1.01 }}
+                                            onClick={() => { if (pin.weather) setWeather(pin.weather); setShowPins(false); }}
+                                            style={{
+                                                background: "rgba(255,255,255,0.04)",
+                                                border: "1px solid rgba(255,255,255,0.08)",
+                                                borderRadius: "14px",
+                                                padding: "14px 16px",
+                                                cursor: "pointer",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: "12px",
+                                            }}
+                                        >
+                                            {pin.weather && <WeatherIcon condition={pin.weather.condition} size="md" />}
+                                            <div className="flex-1 min-w-0">
+                                                <p style={{ fontSize: "14px", fontWeight: 600, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pin.name}</p>
+                                                {pin.weather && (
+                                                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
+                                                        {pin.weather.temperature}°C · {pin.weather.condition}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); removePin(pin.id); }}
+                                                style={{ color: "rgba(255,255,255,0.2)", fontSize: "14px", cursor: "pointer", background: "none", border: "none", padding: "4px 8px" }}
+                                            >
+                                                ×
+                                            </button>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ── NEW: Compare Panel ── */}
+            <AnimatePresence>
+                {showCompare && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-30 flex items-center justify-center p-4"
+                        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
+                        onClick={(e) => e.target === e.currentTarget && setShowCompare(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.93, y: 16 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.93, y: 16 }}
+                            style={{
+                                background: "rgba(6,6,18,0.95)",
+                                border: "1px solid rgba(255,255,255,0.10)",
+                                borderRadius: "20px",
+                                padding: "24px",
+                                width: "100%",
+                                maxWidth: "600px",
+                                maxHeight: "85vh",
+                                overflowY: "auto",
+                            }}
+                        >
+                            <div className="flex items-center justify-between mb-5">
+                                <div>
+                                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>Compare Locations</h3>
+                                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: 2 }}>Live weather across your pinned cities</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {compareLoading && (
+                                        <motion.div
+                                            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                                            animate={{ rotate: 360 }}
+                                            transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                                        />
+                                    )}
+                                    <button onClick={() => setShowCompare(false)} style={{ color: "rgba(255,255,255,0.3)", fontSize: "18px", cursor: "pointer", background: "none", border: "none" }}>✕</button>
+                                </div>
+                            </div>
+
+                            {/* Comparison grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {pins.filter((p) => p.weather).map((pin) => {
+                                    const pinAqi = pin.weather ? estimateAQI(pin.weather) : null;
+                                    return (
+                                        <div
+                                            key={pin.id}
+                                            style={{
+                                                background: "rgba(255,255,255,0.04)",
+                                                border: "1px solid rgba(255,255,255,0.08)",
+                                                borderRadius: "16px",
+                                                padding: "16px",
+                                            }}
+                                        >
+                                            <div className="flex items-start justify-between mb-3">
+                                                <div>
+                                                    <p style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>{pin.name}</p>
+                                                    <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", marginTop: 2, textTransform: "capitalize" }}>
+                                                        {pin.weather?.description}
+                                                    </p>
+                                                </div>
+                                                <WeatherIcon condition={pin.weather?.condition ?? ""} size="md" />
+                                            </div>
+
+                                            <p style={{ fontSize: "32px", fontWeight: 900, color: "#fff", fontFamily: "monospace", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 10 }}>
+                                                {pin.weather?.temperature}°
+                                            </p>
+
+                                            <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", marginBottom: 10 }} />
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Stat label="Humidity" value={`${pin.weather?.humidity}%`} />
+                                                <Stat label="Wind" value={`${pin.weather?.windSpeed} m/s`} />
+                                            </div>
+
+                                            {pinAqi && (
+                                                <div className="flex items-center gap-2 mt-3">
+                                                    <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.12em" }}>AQI</span>
+                                                    <span style={{ fontSize: "12px", fontWeight: 700, color: pinAqi.color }}>{pinAqi.aqi}</span>
+                                                    <span style={{ fontSize: "10px", color: pinAqi.color }}>{pinAqi.label}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {pins.length < 2 && (
+                                <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", textAlign: "center", marginTop: 16 }}>
+                                    Pin more locations on the globe to compare them side by side.
+                                </p>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+--- END OF .\frontend\app\dashboard\Earth\page.tsx ---
+
+--- FILE: .\frontend\components\weather\RainScene.tsx ---
+﻿"use client";
+
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { useRef, useMemo } from "react";
+import * as THREE from "three";
+
+function RainParticles() {
+    const pointsRef = useRef<THREE.Points>(null!);
+    const texture = useLoader(THREE.TextureLoader, "/textures/raindrop.png");
+
+    const count = 7000;
+
+    const positions = useMemo(() => {
+        const arr = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+            arr[i * 3] = (Math.random() - 0.5) * 80;
+            arr[i * 3 + 1] = Math.random() * 60;
+            arr[i * 3 + 2] = (Math.random() - 0.5) * 80;
+        }
+
+        return arr;
+    }, []);
+
+    useFrame(() => {
+        const geometry = pointsRef.current.geometry;
+        const attr = geometry.attributes.position;
+
+        for (let i = 0; i < count; i++) {
+            attr.array[i * 3 + 1] -= 0.7;
+
+            if (attr.array[i * 3 + 1] < -30) {
+                attr.array[i * 3 + 1] = 30;
+            }
+        }
+
+        attr.needsUpdate = true;
+    });
+
+    return (
+        <points ref={pointsRef}>
+            <bufferGeometry>
+                <bufferAttribute
+                    attach="attributes-position"
+                    count={positions.length / 3}
+                    array={positions}
+                    itemSize={3}
+                />
+            </bufferGeometry>
+
+            <pointsMaterial
+                map={texture}
+                alphaMap={texture}
+                size={0.07}          // 👈 smaller droplets
+                transparent
+                depthWrite={false}
+                opacity={0.55}
+                color="#ffffff"
+                sizeAttenuation      // important for depth realism
+            />
+
+        </points>
+    );
+}
+
+export default function RainScene() {
+    return (
+        <Canvas camera={{ position: [0, 0, 20], fov: 75 }}>
+            <fog attach="fog" args={["#000000", 10, 100]} />
+            <RainParticles />
+        </Canvas>
+    );
+}
+
+--- END OF .\frontend\components\weather\RainScene.tsx ---
+
