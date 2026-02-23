@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
+import type { Variants } from "framer-motion";
 
 type Profile = { name: string; email: string; userId: string };
 
@@ -44,8 +45,24 @@ const DEFAULT_NOTIFS: Notifications = {
 
 const FITNESS_GOALS = ["Lose fat", "Gain muscle", "Maintain", "Improve endurance", "Increase flexibility"];
 
-const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } } };
+const stagger = {
+    hidden: {},
+    show: {
+        transition: { staggerChildren: 0.08 }
+    }
+} satisfies Variants;
+
+const fadeUp = {
+    hidden: { opacity: 0, y: 20 },
+    show: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            duration: 0.45,
+            ease: "easeOut"
+        }
+    }
+} satisfies Variants;
 
 export default function ProfilePage() {
     const { token, logout } = useAuth();
