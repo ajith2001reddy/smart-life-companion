@@ -45,7 +45,7 @@ const DEFAULT_NOTIFS: Notifications = {
 const FITNESS_GOALS = ["Lose fat", "Gain muscle", "Maintain", "Improve endurance", "Increase flexibility"];
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } } };
+const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } } };
 
 export default function ProfilePage() {
     const { token, logout } = useAuth();
