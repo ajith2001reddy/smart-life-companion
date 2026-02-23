@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMART LIFE — AI Performance Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --acid: #c8ff00;
+    --acid-dim: #8fb800;
+    --fire: #ff4d00;
+    --ice: #00cfff;
+    --bg: #080808;
+    --bg2: #0e0e10;
+    --bg3: #141417;
+    --surface: #1a1a1e;
+    --surface2: #222227;
+    --border: rgba(255,255,255,0.07);
+    --text: #f0f0f0;
+    --muted: #666;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise grain overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.35;
+  }
+
+  /* === LAYOUT === */
+  .app { display: flex; min-height: 100vh; }
+
+  /* === SIDEBAR === */
+  .sidebar {
+    width: 72px;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    gap: 8px;
+  }
+
+  .logo-mark {
+    width: 40px; height: 40px;
+    background: var(--acid);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 24px;
+    cursor: pointer;
+  }
+  .logo-mark span {
+    font-family: var(--font-display);
+    font-size: 20px;
+    color: #000;
+    line-height: 1;
+  }
+
+  .nav-item {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--muted);
+    font-size: 20px;
+    border: none;
+    background: transparent;
+    position: relative;
+  }
+  .nav-item:hover { background: var(--surface); color: var(--text); }
+  .nav-item.active { background: var(--acid); color: #000; }
+  .nav-item .tooltip {
+    position: absolute;
+    left: 60px;
+    background: var(--surface2);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    border: 1px solid var(--border);
+  }
+  .nav-item:hover .tooltip { opacity: 1; }
+
+  /* === MAIN === */
+  .main {
+    margin-left: 72px;
+    flex: 1;
+    min-height: 100vh;
+  }
+
+  /* === PAGES === */
+  .page { display: none; padding: 40px; min-height: 100vh; }
+  .page.active { display: block; }
+
+  /* Animated entry */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .page.active { animation: fadeUp 0.4s ease; }
+
+  /* === TYPOGRAPHY === */
+  .page-title {
+    font-family: var(--font-display);
+    font-size: clamp(48px, 6vw, 80px);
+    line-height: 0.95;
+    letter-spacing: 0.02em;
+    margin-bottom: 8px;
+  }
+  .page-title .accent { color: var(--acid); }
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 40px;
+  }
+
+  /* === CARDS === */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: rgba(200,255,0,0.2); }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* === GRID === */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+  /* === STAT CARDS === */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s, border-color 0.3s;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: rgba(200,255,0,0.3); }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    background: var(--acid);
+    opacity: 0.04;
+    border-radius: 0 16px 0 60px;
+  }
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-unit { font-size: 20px; color: var(--muted); }
+  .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-change {
+    font-size: 12px;
+    color: var(--acid);
+    margin-top: 8px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* === FORM ELEMENTS === */
+  .form-group { margin-bottom: 20px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--acid);
+    box-shadow: 0 0 0 3px rgba(200,255,0,0.1);
+  }
+  .form-select option { background: var(--bg2); }
+
+  .range-row { display: flex; align-items: center; gap: 16px; }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 4px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--acid);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(200,255,0,0.5);
+  }
+  .range-val {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--acid);
+    min-width: 48px;
+    text-align: right;
+  }
+
+  /* === BUTTONS === */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    outline: none;
+  }
+  .btn-primary {
+    background: var(--acid);
+    color: #000;
+  }
+  .btn-primary:hover { background: #d8ff20; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,255,0,0.3); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--acid); color: var(--acid); }
+  .btn-danger {
+    background: var(--fire);
+    color: #fff;
+  }
+  .btn-full { width: 100%; }
+
+  /* === LOADING === */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(200,255,0,0.3);
+    border-top-color: var(--acid);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+
+  /* === AI CHAT BUBBLES === */
+  .chat-area {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    height: 400px;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+    scroll-behavior: smooth;
+  }
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-track { background: transparent; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+  .message {
+    display: flex;
+    gap: 12px;
+    animation: fadeUp 0.3s ease;
+  }
+  .message.user { flex-direction: row-reverse; }
+  
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .avatar.ai { background: var(--acid); color: #000; font-weight: 700; }
+  .avatar.user { background: var(--surface2); }
+
+  .bubble {
+    max-width: 75%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .bubble.ai {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.user {
+    background: var(--acid);
+    color: #000;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble p { margin-bottom: 8px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble strong { color: var(--acid); }
+  .bubble.ai strong { color: inherit; font-weight: 700; }
+
+  .chat-input-row { display: flex; gap: 12px; }
+  .chat-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .chat-input:focus { border-color: var(--acid); }
+
+  /* === PLAN DISPLAY === */
+  .plan-section { margin-bottom: 32px; }
+  .plan-section-title {
+    font-family: var(--font-display);
+    font-size: 24px;
+    color: var(--acid);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .plan-section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .day-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+    cursor: pointer;
+  }
+  .day-card:hover { border-color: rgba(200,255,0,0.3); transform: translateX(4px); }
+  .day-card.completed { border-color: rgba(200,255,0,0.5); background: rgba(200,255,0,0.05); }
+  .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .day-name { font-weight: 700; font-size: 16px; }
+  .day-badge {
+    background: var(--acid);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .day-badge.rest { background: var(--surface2); color: var(--muted); }
+  .exercises-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .exercise-tag {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .exercise-tag.done { background: rgba(200,255,0,0.1); border-color: rgba(200,255,0,0.4); color: var(--acid); }
+
+  /* === ANALYTICS === */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    padding: 20px 0;
+  }
+
+  .metric-bar {
+    margin-bottom: 16px;
+  }
+  .metric-bar-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+  .metric-bar-track {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .metric-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--acid);
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .heatmap { display: grid; grid-template-columns: repeat(53, 1fr); gap: 3px; }
+  .heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 2px;
+    background: var(--surface2);
+    transition: transform 0.1s;
+  }
+  .heatmap-cell:hover { transform: scale(1.5); z-index: 1; }
+  .heatmap-cell.l1 { background: rgba(200,255,0,0.2); }
+  .heatmap-cell.l2 { background: rgba(200,255,0,0.45); }
+  .heatmap-cell.l3 { background: rgba(200,255,0,0.7); }
+  .heatmap-cell.l4 { background: rgba(200,255,0,1); }
+
+  /* === PROFILE === */
+  .profile-hero {
+    background: linear-gradient(135deg, var(--surface), var(--bg2));
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-hero::before {
+    content: '';
+    position: absolute;
+    top: -50px; right: -50px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(200,255,0,0.15), transparent 70%);
+    border-radius: 50%;
+  }
+  .profile-avatar-big {
+    width: 80px; height: 80px;
+    background: var(--acid);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 36px;
+    color: #000;
+    flex-shrink: 0;
+  }
+  .profile-name {
+    font-family: var(--font-display);
+    font-size: 40px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .profile-tagline { color: var(--muted); font-size: 14px; }
+
+  /* === HEADER BAR === */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8,8,8,0.8);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .topbar-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 0.05em;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .api-badge {
+    background: rgba(200,255,0,0.1);
+    border: 1px solid rgba(200,255,0,0.3);
+    color: var(--acid);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .api-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--acid); animation: pulse 2s infinite; }
+
+  /* === DASHBOARD HERO === */
+  .dash-hero {
+    background: linear-gradient(135deg, #0a1a00, var(--bg2));
+    border: 1px solid rgba(200,255,0,0.15);
+    border-radius: 20px;
+    padding: 48px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .dash-hero::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(200,255,0,0.08), transparent 70%);
+    border-radius: 50%;
+  }
+  .dash-hero::after {
+    content: 'SMART LIFE';
+    position: absolute;
+    bottom: -20px; right: 40px;
+    font-family: var(--font-display);
+    font-size: 120px;
+    color: rgba(200,255,0,0.04);
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    line-height: 1;
+  }
+  .greeting { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; }
+  .hero-name {
+    font-family: var(--font-display);
+    font-size: 64px;
+    line-height: 0.95;
+    margin-bottom: 16px;
+  }
+  .hero-name .acid { color: var(--acid); }
+  .hero-sub { font-size: 15px; color: var(--muted); font-weight: 300; max-width: 400px; line-height: 1.6; }
+
+  /* === ONBOARDING === */
+  .onboard-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .onboard-box {
+    background: var(--bg2);
+    border: 1px solid rgba(200,255,0,0.2);
+    border-radius: 24px;
+    padding: 48px;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: fadeUp 0.5s ease;
+  }
+  .onboard-box::-webkit-scrollbar { display: none; }
+  .onboard-step { display: none; }
+  .onboard-step.active { display: block; }
+
+  .step-indicator {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+  .step-dot {
+    height: 3px;
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 4px;
+    transition: background 0.3s;
+  }
+  .step-dot.done { background: var(--acid); }
+
+  /* === API KEY === */
+  .key-input-row { display: flex; gap: 8px; }
+  .key-input-row .form-input { font-family: var(--font-mono); font-size: 13px; }
+  .key-status {
+    font-size: 12px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    display: none;
+  }
+  .key-status.ok { background: rgba(200,255,0,0.1); color: var(--acid); border: 1px solid rgba(200,255,0,0.2); display: flex; align-items: center; gap: 6px; }
+  .key-status.error { background: rgba(255,77,0,0.1); color: var(--fire); border: 1px solid rgba(255,77,0,0.2); display: flex; align-items: center; gap: 6px; }
+
+  /* === BENTO GRID === */
+  .bento { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto; gap: 16px; }
+  .bento-cell { border-radius: 16px; padding: 24px; border: 1px solid var(--border); background: var(--surface); }
+  .bento-wide { grid-column: span 2; }
+  .bento-tall { grid-row: span 2; }
+
+  /* === PROGRESS RING === */
+  .ring-container { display: flex; align-items: center; justify-content: center; margin: 16px 0; }
+  .progress-ring { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 8; }
+  .ring-fill {
+    fill: none;
+    stroke: var(--acid);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.16, 1, 0.3, 1);
+    filter: drop-shadow(0 0 8px rgba(200,255,0,0.5));
+  }
+  .ring-text { font-family: var(--font-display); font-size: 28px; fill: var(--text); }
+  .ring-sub { font-size: 11px; fill: var(--muted); font-family: var(--font-body); }
+
+  /* === WORKOUT LOG === */
+  .log-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: rgba(200,255,0,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .log-info { flex: 1; }
+  .log-name { font-size: 14px; font-weight: 500; }
+  .log-meta { font-size: 12px; color: var(--muted); }
+  .log-value { font-family: var(--font-mono); font-size: 13px; color: var(--acid); }
+
+  /* === SCROLLBAR === */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 4px; }
+
+  /* === NUTRITION BARS === */
+  .macro-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .macro-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .macro-value {
+    font-family: var(--font-display);
+    font-size: 32px;
+    margin-bottom: 2px;
+  }
+  .macro-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+
+  /* === TOAST === */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface);
+    border: 1px solid var(--acid);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    z-index: 500;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* === PLAN OUTPUT === */
+  .plan-output {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    font-family: var(--font-body);
+    min-height: 100px;
+    display: none;
+  }
+  .plan-output.visible { display: block; animation: fadeUp 0.4s ease; }
+  .plan-output h3 { color: var(--acid); font-size: 16px; margin: 16px 0 8px; }
+  .plan-output strong { color: var(--acid); }
+
+  /* Typing cursor */
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor { display: inline-block; width: 2px; height: 16px; background: var(--acid); margin-left: 2px; animation: blink 1s infinite; vertical-align: middle; }
+
+  /* === RESPONSIVE === */
+  @media (max-width: 900px) {
+    .grid-3 { grid-template-columns: 1fr; }
+    .bento { grid-template-columns: 1fr 1fr; }
+    .bento-wide { grid-column: span 2; }
+    .page { padding: 20px; }
+    .macro-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .bento { grid-template-columns: 1fr; }
+    .bento-wide { grid-column: span 1; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* Tag line animated */
+  .typing-text::after {
+    content: '|';
+    animation: blink 1s infinite;
+    color: var(--acid);
+  }
+
+  /* Section divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 32px 0;
+  }
+
+  /* Quick stat pills */
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pill .pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--acid); }
+
+  /* Glow text */
+  .glow { text-shadow: 0 0 30px rgba(200,255,0,0.5); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .emoji { font-size: 48px; display: block; margin-bottom: 16px; }
+  .empty-state p { font-size: 14px; }
+
+  /* Input hint */
+  .input-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ===== ONBOARDING OVERLAY ===== -->
+<div class="onboard-overlay" id="onboarding">
+  <div class="onboard-box">
+    <div class="step-indicator">
+      <div class="step-dot done" id="sd1"></div>
+      <div class="step-dot" id="sd2"></div>
+      <div class="step-dot" id="sd3"></div>
+    </div>
+
+    <!-- Step 1: Welcome -->
+    <div class="onboard-step active" id="step1">
+      <div style="font-family:var(--font-display);font-size:56px;line-height:0.95;margin-bottom:16px;">
+        SMART<br><span style="color:var(--acid)">LIFE</span>
+      </div>
+      <p style="color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:32px;">
+        Your AI-powered performance coach. Personalized workouts, nutrition, and analytics — all driven by real intelligence.
+      </p>
+      <button class="btn btn-primary btn-full" onclick="nextStep(2)">Get Started →</button>
+    </div>
+
+    <!-- Step 2: Profile -->
+    <div class="onboard-step" id="step2">
+      <p class="page-subtitle" style="margin-bottom:24px;">Your Profile</p>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" type="text" id="ob-name" placeholder="e.g. Alex Johnson">
+      </div>
+      <div class="grid-2" style="gap:16px;">
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input class="form-input" type="number" id="ob-age" placeholder="25" min="10" max="99">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select class="form-select" id="ob-gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="gap:16px;">
+        <div class="form-group">
+          <label class="form-label">Weight (kg)</label>
+          <input class="form-input" type="number" id="ob-weight" placeholder="75">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Height (cm)</label>
+          <input class="form-input" type="number" id="ob-height" placeholder="175">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Primary Goal</label>
+        <select class="form-select" id="ob-goal">
+          <option value="muscle_gain">💪 Muscle Gain</option>
+          <option value="fat_loss">🔥 Fat Loss</option>
+          <option value="endurance">🏃 Endurance</option>
+          <option value="strength">🏋️ Strength</option>
+          <option value="general_fitness">⚡ General Fitness</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fitness Level</label>
+        <select class="form-select" id="ob-level">
+          <option value="beginner">Beginner (0–1 year)</option>
+          <option value="intermediate">Intermediate (1–3 years)</option>
+          <option value="advanced">Advanced (3+ years)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button class="btn btn-ghost" onclick="nextStep(1)">Back</button>
+        <button class="btn btn-primary" style="flex:1" onclick="nextStep(3)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: API Key -->
+    <div class="onboard-step" id="step3">
+      <p class="page-subtitle" style="margin-bottom:8px;">Connect AI</p>
+      <div style="font-family:var(--font-display);font-size:36px;margin-bottom:16px;">
+        OpenAI <span style="color:var(--acid)">API Key</span>
+      </div>
+      <p style="color:var(--muted);font-size:14px;line-height:1.7;margin-bottom:24px;">
+        Your key powers the AI coach. It stays in your browser and is never sent to our servers.
+      </p>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <div class="key-input-row">
+          <input class="form-input" type="password" id="ob-apikey" placeholder="sk-proj-...">
+          <button class="btn btn-ghost" onclick="testApiKey()" id="test-btn">Test</button>
+        </div>
+        <div class="key-status" id="key-status"></div>
+        <p class="input-hint">Get your key at platform.openai.com → API Keys</p>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button class="btn btn-ghost" onclick="nextStep(2)">Back</button>
+        <button class="btn btn-primary" style="flex:1" onclick="finishOnboarding()">Launch App 🚀</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast">
+  <span id="toast-icon">✓</span>
+  <span id="toast-msg">Done!</span>
+</div>
+
+<!-- ===== APP ===== -->
+<div class="app" id="mainApp" style="display:none;">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo-mark" onclick="showPage('dashboard')"><span>SL</span></div>
+    <button class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')" title="Dashboard">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="tooltip">Dashboard</span>
+    </button>
+    <button class="nav-item" id="nav-plan" onclick="showPage('plan')" title="AI Plan">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span class="tooltip">AI Plan</span>
+    </button>
+    <button class="nav-item" id="nav-coach" onclick="showPage('coach')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      <span class="tooltip">AI Coach</span>
+    </button>
+    <button class="nav-item" id="nav-analytics" onclick="showPage('analytics')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>
+      <span class="tooltip">Analytics</span>
+    </button>
+    <button class="nav-item" id="nav-nutrition" onclick="showPage('nutrition')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm0 18a8 8 0 118-8 8 8 0 01-8 8z"/><path d="M12 6v6l4 2"/></svg>
+      <span class="tooltip">Nutrition</span>
+    </button>
+    <button class="nav-item" id="nav-profile" onclick="showPage('profile')" style="margin-top:auto;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tooltip">Profile</span>
+    </button>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- === DASHBOARD === -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <span class="topbar-title">DASHBOARD</span>
+        <div class="topbar-right">
+          <div class="api-badge"><div class="api-dot"></div><span id="api-status-text">AI Connected</span></div>
+        </div>
+      </div>
+      <div style="padding:40px;">
+        <!-- Hero -->
+        <div class="dash-hero">
+          <div class="greeting" id="dash-greeting">GOOD MORNING</div>
+          <div class="hero-name">WELCOME BACK,<br><span class="acid glow" id="dash-name">ATHLETE</span></div>
+          <div class="hero-sub" id="dash-tagline">Your AI coach is ready. Today is the day.</div>
+          <div style="margin-top:24px;">
+            <button class="btn btn-primary" onclick="showPage('plan')">Generate Today's Plan →</button>
+          </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="grid-3" style="margin-bottom:24px;">
+          <div class="stat-card">
+            <div class="card-label">BMI</div>
+            <div class="stat-value" id="bmi-val">—</div>
+            <div class="stat-label">Body Mass Index</div>
+            <div class="stat-change" id="bmi-status">Calculate below ↓</div>
+          </div>
+          <div class="stat-card">
+            <div class="card-label">Weekly Volume</div>
+            <div class="stat-value">4<span class="stat-unit">days</span></div>
+            <div class="stat-label">Planned Training Days</div>
+            <div class="stat-change">↑ Personalized by AI</div>
+          </div>
+          <div class="stat-card">
+            <div class="card-label">Completion Rate</div>
+            <div class="stat-value">0<span class="stat-unit">%</span></div>
+            <div class="stat-label">This week</div>
+            <div class="stat-change">Generate your first plan</div>
+          </div>
+        </div>
+
+        <!-- Bento grid -->
+        <div class="bento">
+          <!-- Progress ring -->
+          <div class="bento-cell" style="text-align:center;">
+            <div class="card-label">Weekly Goal</div>
+            <div class="ring-container">
+              <svg class="progress-ring" width="120" height="120">
+                <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                <circle class="ring-fill" id="ring-fill" cx="60" cy="60" r="52"
+                  stroke-dasharray="327"
+                  stroke-dashoffset="327"/>
+                <text class="ring-text" x="60" y="65" text-anchor="middle" dominant-baseline="middle" id="ring-pct">0%</text>
+              </svg>
+            </div>
+            <div class="stat-label">Workouts Completed</div>
+          </div>
+
+          <!-- Quick actions -->
+          <div class="bento-cell bento-wide">
+            <div class="card-label">Quick Actions</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+              <button class="btn btn-primary" onclick="showPage('plan')" style="width:100%;">🤖 AI Plan</button>
+              <button class="btn btn-ghost" onclick="showPage('coach')" style="width:100%;">💬 Ask Coach</button>
+              <button class="btn btn-ghost" onclick="showPage('analytics')" style="width:100%;">📊 Analytics</button>
+              <button class="btn btn-ghost" onclick="showPage('nutrition')" style="width:100%;">🥗 Nutrition</button>
+            </div>
+          </div>
+
+          <!-- Recent activity -->
+          <div class="bento-cell">
+            <div class="card-label">Today's Focus</div>
+            <div style="margin-top:12px;" id="dash-focus">
+              <div class="empty-state" style="padding:20px;">
+                <span class="emoji" style="font-size:32px;">🎯</span>
+                <p>Generate a plan to see today's focus</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Streak -->
+          <div class="bento-cell" style="background:rgba(200,255,0,0.05);border-color:rgba(200,255,0,0.2);">
+            <div class="card-label">Current Streak</div>
+            <div style="font-family:var(--font-display);font-size:64px;color:var(--acid);line-height:1;margin:12px 0;" id="streak-val">0</div>
+            <div class="stat-label">Days in a row</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === AI PLAN === -->
+    <div class="page" id="page-plan">
+      <div class="topbar">
+        <span class="topbar-title">AI PLAN GENERATOR</span>
+      </div>
+      <div style="padding:40px;">
+        <div class="page-title">GENERATE YOUR<br><span class="accent">SMART PLAN</span></div>
+        <div class="page-subtitle">AI analyzes your profile and builds a personalized program</div>
+
+        <div class="grid-2" style="gap:32px;align-items:start;">
+          <!-- Form -->
+          <div>
+            <div class="card">
+              <div class="card-label" style="margin-bottom:20px;">Plan Configuration</div>
+              <div class="form-group">
+                <label class="form-label">Training Goal</label>
+                <select class="form-select" id="plan-goal">
+                  <option value="muscle_gain">💪 Muscle Gain & Hypertrophy</option>
+                  <option value="fat_loss">🔥 Fat Loss & Conditioning</option>
+                  <option value="strength">🏋️ Strength & Power</option>
+                  <option value="endurance">🏃 Endurance & Cardio</option>
+                  <option value="hybrid">⚡ Hybrid Performance</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Days per Week</label>
+                <div class="range-row">
+                  <input type="range" id="plan-days" min="2" max="6" value="4" oninput="updateRange('plan-days','days-val')">
+                  <span class="range-val" id="days-val">4 days</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Session Duration</label>
+                <div class="range-row">
+                  <input type="range" id="plan-duration" min="30" max="120" value="60" step="10" oninput="updateRange('plan-duration','dur-val','min')">
+                  <span class="range-val" id="dur-val">60 min</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Equipment Available</label>
+                <select class="form-select" id="plan-equipment">
+                  <option value="full_gym">Full Gym</option>
+                  <option value="dumbbells">Dumbbells Only</option>
+                  <option value="bodyweight">Bodyweight</option>
+                  <option value="home_gym">Home Gym</option>
+                  <option value="barbell">Barbell + Rack</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fitness Level</label>
+                <select class="form-select" id="plan-level">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate" selected>Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Injuries / Limitations</label>
+                <input class="form-input" type="text" id="plan-injuries" placeholder="e.g. bad knees, shoulder pain (or leave blank)">
+              </div>
+              <button class="btn btn-primary btn-full" id="generate-btn" onclick="generatePlan()">
+                🤖 Generate AI Plan
+              </button>
+            </div>
+          </div>
+
+          <!-- Output -->
+          <div>
+            <div class="card-label" style="margin-bottom:16px;">Your AI-Generated Plan</div>
+            <div id="plan-loading" style="display:none;">
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <div class="skeleton" style="height:28px;width:60%;"></div>
+                <div class="skeleton" style="height:80px;"></div>
+                <div class="skeleton" style="height:80px;"></div>
+                <div class="skeleton" style="height:80px;"></div>
+                <div class="skeleton" style="height:60px;width:80%;"></div>
+              </div>
+            </div>
+            <div class="plan-output" id="plan-output"></div>
+            <div id="plan-empty" style="text-align:center;padding:60px 20px;color:var(--muted);">
+              <div style="font-size:64px;margin-bottom:16px;">🤖</div>
+              <div style="font-size:15px;margin-bottom:8px;color:var(--text);">Ready to generate</div>
+              <div style="font-size:13px;">Configure your plan and hit Generate</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === AI COACH CHAT === -->
+    <div class="page" id="page-coach">
+      <div class="topbar">
+        <span class="topbar-title">AI COACH</span>
+        <div class="topbar-right">
+          <button class="btn btn-ghost" style="padding:8px 16px;font-size:12px;" onclick="clearChat()">Clear Chat</button>
+        </div>
+      </div>
+      <div style="padding:40px;max-width:800px;margin:0 auto;">
+        <div class="page-title">YOUR <span class="accent">AI COACH</span></div>
+        <div class="page-subtitle">Ask anything about training, nutrition, recovery, or technique</div>
+
+        <!-- Suggestions -->
+        <div class="pill-row" id="suggestion-pills">
+          <div class="pill" style="cursor:pointer;" onclick="useSuggestion(this)">💪 How do I build bigger shoulders?</div>
+          <div class="pill" style="cursor:pointer;" onclick="useSuggestion(this)">🔥 Best fat loss strategy?</div>
+          <div class="pill" style="cursor:pointer;" onclick="useSuggestion(this)">😴 How much sleep do I need?</div>
+          <div class="pill" style="cursor:pointer;" onclick="useSuggestion(this)">🥗 What should I eat pre-workout?</div>
+          <div class="pill" style="cursor:pointer;" onclick="useSuggestion(this)">📈 How do I break a plateau?</div>
+        </div>
+
+        <div class="chat-area" id="chat-area">
+          <!-- Initial message -->
+          <div class="message">
+            <div class="avatar ai">AI</div>
+            <div class="bubble ai">
+              <p>Hey! I'm your AI performance coach powered by GPT-4. I'm here to help you with:</p>
+              <p><strong>Workout programming</strong> • <strong>Nutrition guidance</strong> • <strong>Recovery optimization</strong> • <strong>Technique tips</strong></p>
+              <p>What do you want to work on today?</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" placeholder="Ask your AI coach anything..." onkeydown="if(event.key==='Enter' && !event.shiftKey){sendMessage();}">
+          <button class="btn btn-primary" id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- === ANALYTICS === -->
+    <div class="page" id="page-analytics">
+      <div class="topbar"><span class="topbar-title">ANALYTICS</span></div>
+      <div style="padding:40px;">
+        <div class="page-title">YOUR <span class="accent">PROGRESS</span></div>
+        <div class="page-subtitle">AI-powered insights into your performance trends</div>
+
+        <!-- KPI Row -->
+        <div class="grid-3" style="margin-bottom:32px;">
+          <div class="stat-card">
+            <div class="card-label">Performance Score</div>
+            <div class="stat-value" style="color:var(--acid);">82</div>
+            <div class="stat-label">Out of 100</div>
+            <div class="stat-change">↑ +5 from last week</div>
+          </div>
+          <div class="stat-card">
+            <div class="card-label">Consistency</div>
+            <div class="stat-value">75<span class="stat-unit">%</span></div>
+            <div class="stat-label">Days trained vs planned</div>
+            <div class="stat-change">↑ Above average</div>
+          </div>
+          <div class="stat-card">
+            <div class="card-label">Vol. Overload</div>
+            <div class="stat-value" style="color:var(--ice);">+12<span class="stat-unit">%</span></div>
+            <div class="stat-label">vs Last Week</div>
+            <div class="stat-change" style="color:var(--ice);">Progressive overload ✓</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid-2" style="margin-bottom:32px;">
+          <div class="card">
+            <div class="card-label">Weekly Volume (sets)</div>
+            <div class="chart-container">
+              <canvas id="volumeChart" height="180"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label">Strength Progress (kg)</div>
+            <div class="chart-container">
+              <canvas id="strengthChart" height="180"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="grid-2" style="margin-bottom:32px;">
+          <div class="card">
+            <div class="card-label" style="margin-bottom:20px;">Muscle Group Balance</div>
+            <div class="metric-bar">
+              <div class="metric-bar-header"><span>Chest</span><span>72%</span></div>
+              <div class="metric-bar-track"><div class="metric-bar-fill" style="width:72%;background:var(--acid);"></div></div>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-bar-header"><span>Back</span><span>85%</span></div>
+              <div class="metric-bar-track"><div class="metric-bar-fill" style="width:85%;"></div></div>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-bar-header"><span>Legs</span><span>68%</span></div>
+              <div class="metric-bar-track"><div class="metric-bar-fill" style="width:68%;background:var(--ice);"></div></div>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-bar-header"><span>Shoulders</span><span>60%</span></div>
+              <div class="metric-bar-track"><div class="metric-bar-fill" style="width:60%;background:var(--fire);"></div></div>
+            </div>
+            <div class="metric-bar">
+              <div class="metric-bar-header"><span>Arms</span><span>78%</span></div>
+              <div class="metric-bar-track"><div class="metric-bar-fill" style="width:78%;"></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label" style="margin-bottom:20px;">AI Insight</div>
+            <div id="ai-insight" style="font-size:14px;line-height:1.8;color:var(--muted);">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                <div style="background:var(--acid);color:#000;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">GPT-4 ANALYSIS</div>
+              </div>
+              <p>Click the button below to get an AI analysis of your training data and personalized recommendations.</p>
+              <br>
+              <button class="btn btn-primary btn-full" onclick="getAIInsight()">🧠 Analyze My Progress</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="card">
+          <div class="card-label" style="margin-bottom:20px;">Training Heatmap — Last 12 Months</div>
+          <div class="heatmap" id="heatmap"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:16px;font-size:11px;color:var(--muted);">
+            <span>Less</span>
+            <div style="width:12px;height:12px;background:var(--surface2);border-radius:2px;"></div>
+            <div style="width:12px;height:12px;background:rgba(200,255,0,0.2);border-radius:2px;"></div>
+            <div style="width:12px;height:12px;background:rgba(200,255,0,0.45);border-radius:2px;"></div>
+            <div style="width:12px;height:12px;background:rgba(200,255,0,0.7);border-radius:2px;"></div>
+            <div style="width:12px;height:12px;background:rgba(200,255,0,1);border-radius:2px;"></div>
+            <span>More</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- === NUTRITION === -->
+    <div class="page" id="page-nutrition">
+      <div class="topbar"><span class="topbar-title">NUTRITION PLANNER</span></div>
+      <div style="padding:40px;">
+        <div class="page-title">AI <span class="accent">NUTRITION</span></div>
+        <div class="page-subtitle">Personalized macros and meal plans powered by AI</div>
+
+        <div class="grid-2" style="gap:32px;align-items:start;">
+          <div>
+            <div class="card" style="margin-bottom:16px;">
+              <div class="card-label" style="margin-bottom:20px;">Macro Calculator</div>
+              <div class="form-group">
+                <label class="form-label">Diet Type</label>
+                <select class="form-select" id="nut-diet">
+                  <option value="balanced">Balanced</option>
+                  <option value="high_protein">High Protein</option>
+                  <option value="keto">Ketogenic</option>
+                  <option value="vegan">Vegan</option>
+                  <option value="mediterranean">Mediterranean</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Activity Level</label>
+                <select class="form-select" id="nut-activity">
+                  <option value="sedentary">Sedentary (desk job)</option>
+                  <option value="light">Light (1–3x/week)</option>
+                  <option value="moderate" selected>Moderate (3–5x/week)</option>
+                  <option value="active">Active (6–7x/week)</option>
+                  <option value="athlete">Athlete (2x/day)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Caloric Target</label>
+                <select class="form-select" id="nut-target">
+                  <option value="cut">Cut (–500 cal)</option>
+                  <option value="maintain">Maintain</option>
+                  <option value="bulk">Bulk (+300 cal)</option>
+                  <option value="aggressive_bulk">Aggressive Bulk (+600 cal)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary btn-full" onclick="generateNutrition()">🥗 Generate Nutrition Plan</button>
+            </div>
+          </div>
+
+          <div>
+            <div id="nut-output" style="display:none;">
+              <!-- Filled by JS -->
+            </div>
+            <div id="nut-empty" class="card" style="text-align:center;padding:60px 20px;color:var(--muted);">
+              <div style="font-size:64px;margin-bottom:16px;">🥗</div>
+              <div style="font-size:15px;color:var(--text);margin-bottom:8px;">AI Nutrition Coach</div>
+              <div style="font-size:13px;">Configure and generate your personalized meal plan</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meal plan output -->
+        <div class="divider"></div>
+        <div class="card-label" style="margin-bottom:16px;">AI Meal Plan</div>
+        <div id="meal-plan-output" style="display:none;" class="plan-output visible"></div>
+        <div id="meal-plan-empty" style="text-align:center;padding:40px;color:var(--muted);font-size:14px;">
+          Generate your plan above to see detailed meal recommendations
+        </div>
+      </div>
+    </div>
+
+    <!-- === PROFILE === -->
+    <div class="page" id="page-profile">
+      <div class="topbar"><span class="topbar-title">PROFILE</span></div>
+      <div style="padding:40px;">
+        <div class="profile-hero">
+          <div class="profile-avatar-big" id="prof-avatar">A</div>
+          <div>
+            <div class="profile-name" id="prof-name">ATHLETE</div>
+            <div class="profile-tagline" id="prof-tagline">Fitness Enthusiast</div>
+            <div class="pill-row" style="margin-top:16px;margin-bottom:0;">
+              <div class="pill"><div class="pill-dot"></div><span id="prof-goal">Goal: Muscle Gain</span></div>
+              <div class="pill"><div class="pill-dot"></div><span id="prof-level">Level: Intermediate</span></div>
+              <div class="pill"><div class="pill-dot"></div><span id="prof-bmi-pill">BMI: —</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:24px;">
+          <div class="card">
+            <div class="card-label" style="margin-bottom:20px;">Personal Information</div>
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input class="form-input" type="text" id="prof-name-input">
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Age</label>
+                <input class="form-input" type="number" id="prof-age-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Gender</label>
+                <select class="form-select" id="prof-gender-input">
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Weight (kg)</label>
+                <input class="form-input" type="number" id="prof-weight-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Height (cm)</label>
+                <input class="form-input" type="number" id="prof-height-input">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-full" onclick="saveProfile()">Save Changes</button>
+          </div>
+
+          <div>
+            <div class="card" style="margin-bottom:16px;">
+              <div class="card-label" style="margin-bottom:16px;">Body Metrics</div>
+              <div class="grid-2">
+                <div class="macro-card">
+                  <div class="macro-value" id="met-bmi" style="color:var(--acid);">—</div>
+                  <div class="macro-label">BMI</div>
+                </div>
+                <div class="macro-card">
+                  <div class="macro-value" id="met-bmr">—</div>
+                  <div class="macro-label">BMR (kcal)</div>
+                </div>
+                <div class="macro-card">
+                  <div class="macro-value" id="met-weight">—</div>
+                  <div class="macro-label">Weight kg</div>
+                </div>
+                <div class="macro-card">
+                  <div class="macro-value" id="met-height">—</div>
+                  <div class="macro-label">Height cm</div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-label" style="margin-bottom:16px;">API Settings</div>
+              <div class="form-group">
+                <label class="form-label">OpenAI API Key</label>
+                <input class="form-input" type="password" id="api-key-profile" style="font-family:var(--font-mono);font-size:13px;" placeholder="sk-proj-...">
+              </div>
+              <button class="btn btn-ghost btn-full" onclick="updateApiKey()">Update Key</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  user: { name: '', age: '', gender: 'male', weight: '', height: '', goal: 'muscle_gain', level: 'intermediate' },
+  apiKey: '',
+  workoutsCompleted: 0,
+  totalWorkouts: 4,
+  chatHistory: [],
+  planGenerated: false,
+  streak: 0
+};
+
+// ============================================================
+// ONBOARDING
+// ============================================================
+function nextStep(n) {
+  document.querySelectorAll('.onboard-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('sd' + i).classList.toggle('done', i <= n);
+  }
+  // Collect step 2 data
+  if (n === 3) {
+    state.user.name = document.getElementById('ob-name').value || 'Athlete';
+    state.user.age = document.getElementById('ob-age').value || 25;
+    state.user.gender = document.getElementById('ob-gender').value;
+    state.user.weight = document.getElementById('ob-weight').value || 75;
+    state.user.height = document.getElementById('ob-height').value || 175;
+    state.user.goal = document.getElementById('ob-goal').value;
+    state.user.level = document.getElementById('ob-level').value;
+  }
+}
+
+async function testApiKey() {
+  const key = document.getElementById('ob-apikey').value.trim();
+  const btn = document.getElementById('test-btn');
+  const status = document.getElementById('key-status');
+  if (!key.startsWith('sk-')) {
+    status.className = 'key-status error';
+    status.innerHTML = '✗ Invalid key format';
+    status.style.display = 'flex';
+    return;
+  }
+  btn.textContent = '...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { 'Authorization': 'Bearer ' + key }
+    });
+    if (res.ok) {
+      status.className = 'key-status ok';
+      status.innerHTML = '✓ API key verified';
+      state.apiKey = key;
+    } else {
+      status.className = 'key-status error';
+      status.innerHTML = '✗ Invalid API key';
+    }
+  } catch {
+    status.className = 'key-status error';
+    status.innerHTML = '✗ Network error';
+  }
+  status.style.display = 'flex';
+  btn.textContent = 'Test';
+  btn.disabled = false;
+}
+
+function finishOnboarding() {
+  const key = document.getElementById('ob-apikey').value.trim();
+  if (key) state.apiKey = key;
+  state.user.name = state.user.name || document.getElementById('ob-name').value || 'Athlete';
+  
+  document.getElementById('onboarding').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+  
+  initApp();
+}
+
+// ============================================================
+// APP INIT
+// ============================================================
+function initApp() {
+  // Set greeting
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'GOOD MORNING' : hour < 18 ? 'GOOD AFTERNOON' : 'GOOD EVENING';
+  document.getElementById('dash-greeting').textContent = greet;
+  
+  const firstName = state.user.name.split(' ')[0].toUpperCase();
+  document.getElementById('dash-name').textContent = firstName;
+  
+  const goals = { muscle_gain:'Build muscle & get stronger', fat_loss:'Burn fat & get lean', strength:'Build raw power', endurance:'Go further & faster', general_fitness:'Stay fit & healthy' };
+  document.getElementById('dash-tagline').textContent = goals[state.user.goal] || 'Your AI coach is ready. Let\'s get to work.';
+  
+  // BMI
+  updateBMI();
+  
+  // Profile fields
+  populateProfile();
+  
+  // Charts
+  initCharts();
+  
+  // Heatmap
+  generateHeatmap();
+  
+  // Pre-select goal in plan
+  const goalMap = { muscle_gain: 'muscle_gain', fat_loss: 'fat_loss', strength: 'strength', endurance: 'endurance' };
+  const pg = document.getElementById('plan-goal');
+  if (pg && goalMap[state.user.goal]) pg.value = goalMap[state.user.goal];
+  document.getElementById('plan-level').value = state.user.level;
+  
+  // API status
+  document.getElementById('api-status-text').textContent = state.apiKey ? 'AI Connected' : 'No API Key';
+}
+
+function updateBMI() {
+  const w = parseFloat(state.user.weight);
+  const h = parseFloat(state.user.height) / 100;
+  if (w && h) {
+    const bmi = (w / (h * h)).toFixed(1);
+    document.getElementById('bmi-val').textContent = bmi;
+    let cat = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal weight' : bmi < 30 ? 'Overweight' : 'Obese';
+    document.getElementById('bmi-status').textContent = cat;
+    document.getElementById('prof-bmi-pill').textContent = 'BMI: ' + bmi;
+    document.getElementById('met-bmi').textContent = bmi;
+    
+    // BMR (Mifflin-St Jeor)
+    let bmr;
+    if (state.user.gender === 'male') bmr = Math.round(10*w + 6.25*(h*100) - 5*state.user.age + 5);
+    else bmr = Math.round(10*w + 6.25*(h*100) - 5*state.user.age - 161);
+    document.getElementById('met-bmr').textContent = bmr;
+    document.getElementById('met-weight').textContent = w;
+    document.getElementById('met-height').textContent = h*100;
+  }
+}
+
+function populateProfile() {
+  document.getElementById('prof-name').textContent = state.user.name.toUpperCase();
+  document.getElementById('prof-avatar').textContent = (state.user.name[0] || 'A').toUpperCase();
+  const goalLabels = { muscle_gain:'Muscle Gain', fat_loss:'Fat Loss', strength:'Strength', endurance:'Endurance', general_fitness:'General Fitness' };
+  const levelLabels = { beginner:'Beginner', intermediate:'Intermediate', advanced:'Advanced' };
+  document.getElementById('prof-goal').textContent = 'Goal: ' + (goalLabels[state.user.goal] || '—');
+  document.getElementById('prof-level').textContent = 'Level: ' + (levelLabels[state.user.level] || '—');
+  document.getElementById('prof-tagline').textContent = levelLabels[state.user.level] + ' • ' + (goalLabels[state.user.goal] || '');
+  
+  document.getElementById('prof-name-input').value = state.user.name;
+  document.getElementById('prof-age-input').value = state.user.age;
+  document.getElementById('prof-gender-input').value = state.user.gender;
+  document.getElementById('prof-weight-input').value = state.user.weight;
+  document.getElementById('prof-height-input').value = state.user.height;
+  document.getElementById('api-key-profile').value = state.apiKey;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+}
+
+// ============================================================
+// RANGE INPUTS
+// ============================================================
+function updateRange(inputId, displayId, suffix = '') {
+  const val = document.getElementById(inputId).value;
+  const disp = suffix ? val + ' ' + suffix : val + ' days';
+  document.getElementById(displayId).textContent = disp;
+}
+
+// ============================================================
+// AI — GENERATE PLAN
+// ============================================================
+async function generatePlan() {
+  const btn = document.getElementById('generate-btn');
+  const loading = document.getElementById('plan-loading');
+  const output = document.getElementById('plan-output');
+  const empty = document.getElementById('plan-empty');
+  
+  empty.style.display = 'none';
+  output.classList.remove('visible');
+  loading.style.display = 'block';
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Generating...';
+  
+  const goal = document.getElementById('plan-goal').value;
+  const days = document.getElementById('plan-days').value;
+  const duration = document.getElementById('plan-duration').value;
+  const equipment = document.getElementById('plan-equipment').value;
+  const level = document.getElementById('plan-level').value;
+  const injuries = document.getElementById('plan-injuries').value;
+  
+  const userData = {
+    name: state.user.name, age: state.user.age, weight: state.user.weight,
+    height: state.user.height, goal, daysPerWeek: days, sessionDuration: duration,
+    equipment, level, injuries: injuries || 'None', bmi: (state.user.weight / Math.pow(state.user.height/100, 2)).toFixed(1)
+  };
+  
+  const prompt = `You are an elite fitness coach with 20+ years of experience. Create a detailed, personalized weekly training program.
+
+ATHLETE PROFILE:
+${JSON.stringify(userData, null, 2)}
+
+Generate a ${days}-day/week training program for ${duration} min sessions. Include:
+
+1. **WEEKLY PROGRAM OVERVIEW** — Brief strategy explanation
+2. **DAILY SESSIONS** — For each training day:
+   - Day name and muscle focus
+   - Warm-up (5 min)
+   - Main workout (3-5 exercises with sets, reps, rest)
+   - Cool-down
+3. **PROGRESSIVE OVERLOAD STRATEGY** — How to progress week by week
+4. **RECOVERY PROTOCOL** — Sleep, nutrition timing, deload advice
+5. **KEY COACHING TIPS** — 3 specific tips for this athlete's goal
+
+Format clearly with emojis for readability. Be specific and professional.`;
+  
+  try {
+    let responseText = '';
+    
+    if (state.apiKey && state.apiKey.startsWith('sk-')) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.apiKey },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an elite performance coach. Provide detailed, professional training plans.' },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 2000,
+          stream: false
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      responseText = data.choices[0].message.content;
+    } else {
+      // Demo mode — realistic fake plan
+      responseText = generateDemoPlan(userData);
+    }
+    
+    loading.style.display = 'none';
+    output.innerHTML = formatPlanText(responseText);
+    output.classList.add('visible');
+    state.planGenerated = true;
+    
+    // Update dashboard focus
+    updateDashFocus(goal, days);
+    showToast('✓ Plan generated successfully!');
+    
+  } catch (err) {
+    loading.style.display = 'none';
+    output.innerHTML = `<div style="color:var(--fire);">Error: ${err.message}<br><br>Check your API key or use demo mode (no key required).</div>`;
+    output.classList.add('visible');
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = '🤖 Generate AI Plan';
+}
+
+function generateDemoPlan(u) {
+  const goalText = { muscle_gain:'muscle gain & hypertrophy', fat_loss:'fat loss & body composition', strength:'strength & power', endurance:'cardiovascular endurance', hybrid:'hybrid performance' };
+  const gt = goalText[u.goal] || 'general fitness';
+  
+  return `🏆 WEEKLY TRAINING PROGRAM — ${u.name.toUpperCase()}
+Goal: ${gt.toUpperCase()} | Level: ${u.level} | ${u.daysPerWeek} Days/Week
+
+📊 PROGRAM OVERVIEW
+Based on your profile (${u.weight}kg, ${u.height}cm, BMI ${u.bmi}), I've designed a ${u.daysPerWeek}-day program optimized for ${gt}. Each session runs ${u.duration} minutes with ${u.equipment} available.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+💪 DAY 1 — CHEST & TRICEPS (Push)
+Warm-up (5 min): Jump rope or dynamic stretching
+
+Main Workout:
+• Bench Press: 4×8–10 reps (2 min rest)
+• Incline Dumbbell Press: 3×10–12 reps (90s rest)
+• Cable Flyes: 3×12–15 reps (60s rest)
+• Dips: 3×10–12 reps (90s rest)
+• Tricep Pushdowns: 3×12–15 reps (60s rest)
+
+Cool-down: Chest/tricep stretches, 5 min
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🏋️ DAY 2 — BACK & BICEPS (Pull)
+Warm-up: Band pull-aparts + cat-cow
+
+Main Workout:
+• Deadlift: 4×5 reps (3 min rest)
+• Pull-ups: 4×6–10 reps (2 min rest)
+• Bent-Over Row: 3×10–12 reps (90s rest)
+• Seated Cable Row: 3×12 reps (90s rest)
+• Bicep Curls: 3×12–15 reps (60s rest)
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🦵 DAY 3 — LEGS (Squat Dominant)
+Warm-up: Hip circles, leg swings
+
+Main Workout:
+• Barbell Squat: 4×8–10 reps (2 min rest)
+• Romanian Deadlift: 3×10–12 reps (90s rest)
+• Leg Press: 3×12–15 reps (90s rest)
+• Leg Curls: 3×12 reps (60s rest)
+• Calf Raises: 4×20 reps (45s rest)
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔥 DAY 4 — SHOULDERS & CORE
+Main Workout:
+• Overhead Press: 4×8–10 reps
+• Lateral Raises: 4×15–20 reps
+• Face Pulls: 3×15 reps
+• Plank: 3×60 seconds
+• Ab Wheel: 3×12 reps
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+📈 PROGRESSIVE OVERLOAD STRATEGY
+• Week 1–2: Master form, note weights
+• Week 3–4: Add 2.5kg to compound, 1.25kg to isolation
+• Week 5–6: Add 1 rep per set before increasing weight
+• Week 7: Deload — 60% weight, same volume
+
+😴 RECOVERY PROTOCOL
+• Sleep: 7–9 hours (muscle grows during sleep)
+• Protein: 2.2g per kg of bodyweight = ${Math.round(u.weight * 2.2)}g/day
+• Creatine: 5g/day (most researched supplement)
+• Active rest days: walking, stretching, yoga
+
+🎯 KEY COACHING TIPS
+1. Track every set — what gets measured gets improved
+2. Mind-muscle connection beats heavy weight with bad form
+3. Consistency over perfection — 80% effort 7 days > 100% 4 days
+
+⚡ DEMO MODE — Connect OpenAI API for personalized AI-generated plans`;
+}
+
+function formatPlanText(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^#{1,3} (.+)$/gm, '<h3>$1</h3>')
+    .replace(/\n/g, '<br>');
+}
+
+function updateDashFocus(goal, days) {
+  const focuses = {
+    muscle_gain: ['💪 Chest & Triceps', '🏋️ Back & Biceps', '🦵 Legs', '🔥 Shoulders & Arms'],
+    fat_loss: ['🔥 HIIT Circuit', '💪 Upper Body', '🏃 Cardio', '🦵 Lower Body'],
+    strength: ['🏋️ Squat Day', '🔥 Bench Day', '💪 Deadlift Day', '⚡ Overhead Press'],
+    endurance: ['🏃 Zone 2 Run', '🔥 Intervals', '💪 Strength', '🏊 Cross Train'],
+  };
+  const f = focuses[goal] || focuses.muscle_gain;
+  const today = new Date().getDay();
+  const todayFocus = f[today % f.length];
+  document.getElementById('dash-focus').innerHTML = `
+    <div style="font-size:28px;margin-bottom:8px;">${todayFocus}</div>
+    <div style="font-size:13px;color:var(--muted);">${days} training days this week</div>
+    <br><button class="btn btn-ghost" style="font-size:12px;padding:8px 16px;" onclick="showPage('plan')">View Full Plan →</button>
+  `;
+}
+
+// ============================================================
+// AI — COACH CHAT
+// ============================================================
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  
+  const sendBtn = document.getElementById('send-btn');
+  input.value = '';
+  sendBtn.disabled = true;
+  sendBtn.textContent = '...';
+  
+  // Add user message
+  appendMessage('user', msg);
+  state.chatHistory.push({ role: 'user', content: msg });
+  
+  // Show typing
+  const typingId = showTyping();
+  
+  try {
+    let reply = '';
+    
+    if (state.apiKey && state.apiKey.startsWith('sk-')) {
+      const messages = [
+        { role: 'system', content: `You are an elite personal trainer and performance coach. The athlete: Name=${state.user.name}, Age=${state.user.age}, Weight=${state.user.weight}kg, Height=${state.user.height}cm, Goal=${state.user.goal}, Level=${state.user.level}. Give specific, actionable advice. Keep responses clear and motivating. Use emojis sparingly.` },
+        ...state.chatHistory
+      ];
+      
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.apiKey },
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 600 })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      reply = data.choices[0].message.content;
+    } else {
+      reply = getDemoReply(msg);
+    }
+    
+    removeTyping(typingId);
+    state.chatHistory.push({ role: 'assistant', content: reply });
+    appendMessage('ai', reply);
+    
+  } catch (err) {
+    removeTyping(typingId);
+    appendMessage('ai', '⚠️ Error: ' + err.message + '\n\nAdd your OpenAI API key in Profile settings for real AI responses.');
+  }
+  
+  sendBtn.disabled = false;
+  sendBtn.textContent = 'Send';
+}
+
+function getDemoReply(msg) {
+  const q = msg.toLowerCase();
+  if (q.includes('shoulder')) return "For bigger shoulders, focus on these:\n\n**1. Overhead Press** (4×6-10) — the king of shoulder builders\n**2. Lateral Raises** (4×15-20) — targets the medial delt for width\n**3. Face Pulls** (3×15) — crucial for rear delt health and posture\n\nKey insight: Most people under-train rear delts. This causes muscle imbalances and rounded shoulders. Hit them 2x per week.\n\nProgressive overload tip: Add lateral raises volume before weight. Go from 3×15 to 4×20 before increasing the dumbbell.";
+  if (q.includes('fat') || q.includes('weight loss') || q.includes('lose')) return "Best fat loss strategy in order of importance:\n\n**1. Caloric deficit (70% of result)** — Track intake, target 0.5-1% bodyweight loss/week\n**2. High protein (30% of remaining)** — 2g/kg bodyweight prevents muscle loss while dieting\n**3. Resistance training** — Preserves muscle, keeps metabolism elevated\n**4. Cardio** — Zone 2 (low intensity, 30-45 min) 3x/week is optimal\n\nThe mistake most people make: cutting too aggressively. A 500 cal deficit is perfect. 1000+ leads to muscle loss.";
+  if (q.includes('sleep')) return "Sleep is arguably the most powerful performance tool:\n\n**7-9 hours** is optimal for muscle synthesis and recovery\n**REM sleep** is when growth hormone peaks — skipping this kills gains\n**Consistency matters** — same bedtime every day improves quality\n\nPractical tips:\n• No screens 1 hour before bed (blue light blocks melatonin)\n• Keep room at 65-68°F (18-20°C)\n• Magnesium glycinate (400mg) before bed dramatically improves sleep quality";
+  if (q.includes('plateau')) return "Breaking through a plateau:\n\n**Deload first** — Take 1 week at 60% intensity. Paradoxically, more rest = more gains.\n\nThen attack from a new angle:\n• **Change rep ranges** (if doing 3×10, try 5×5 for 3 weeks)\n• **Vary exercise selection** (switch bench to dumbbell press temporarily)\n• **Increase frequency** (hit each muscle 2x/week instead of 1x)\n• **Audit recovery** — Sleep, protein, stress all affect progress\n\nPlateaus are information, not failure. Your body adapted — now adapt your program.";
+  if (q.includes('pre-workout') || q.includes('before workout')) return "Optimal pre-workout nutrition:\n\n**2-3 hours before:** Full meal — lean protein + complex carbs + minimal fat\n→ Example: Chicken + rice + broccoli\n\n**30-60 min before (if needed):** Simple carbs + protein\n→ Example: Banana + whey shake\n\n**Proven supplements:**\n• Caffeine (200mg) — enhances performance by 10-15%\n• Creatine (5g daily) — best researched supplement\n• Beta-alanine (3.2g) — reduces fatigue\n\nHydration: 500ml water 2 hours before training";
+  return `Great question about "${msg}"!\n\nConnect your OpenAI API key in Profile → Settings for fully personalized AI coaching responses. In demo mode, I can answer common training questions.\n\nTry asking about: shoulders, fat loss, sleep, plateaus, or pre-workout nutrition.`;
+}
+
+function appendMessage(role, text) {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className = 'message ' + role;
+  const formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  div.innerHTML = `
+    <div class="avatar ${role}">${role === 'ai' ? 'AI' : '👤'}</div>
+    <div class="bubble ${role}">${formatted}</div>
+  `;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  // Hide suggestions after first message
+  document.getElementById('suggestion-pills').style.display = 'none';
+}
+
+function showTyping() {
+  const area = document.getElementById('chat-area');
+  const id = 'typing-' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'message'; div.id = id;
+  div.innerHTML = `<div class="avatar ai">AI</div><div class="bubble ai"><span class="spinner" style="width:16px;height:16px;"></span></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function clearChat() {
+  state.chatHistory = [];
+  document.getElementById('chat-area').innerHTML = `
+    <div class="message">
+      <div class="avatar ai">AI</div>
+      <div class="bubble ai"><p>Chat cleared! Ask me anything about your training, nutrition, or recovery.</p></div>
+    </div>`;
+  document.getElementById('suggestion-pills').style.display = 'flex';
+}
+
+function useSuggestion(el) {
+  const text = el.textContent.replace(/^[^\w]*/, '').trim();
+  document.getElementById('chat-input').value = text;
+  sendMessage();
+}
+
+// ============================================================
+// AI — NUTRITION
+// ============================================================
+async function generateNutrition() {
+  const diet = document.getElementById('nut-diet').value;
+  const activity = document.getElementById('nut-activity').value;
+  const target = document.getElementById('nut-target').value;
+  
+  const activityMults = { sedentary:1.2, light:1.375, moderate:1.55, active:1.725, athlete:1.9 };
+  const mult = activityMults[activity] || 1.55;
+  
+  const w = parseFloat(state.user.weight) || 75;
+  const h = parseFloat(state.user.height) || 175;
+  const age = parseFloat(state.user.age) || 25;
+  
+  let bmr = state.user.gender === 'female'
+    ? 10*w + 6.25*h - 5*age - 161
+    : 10*w + 6.25*h - 5*age + 5;
+  
+  let tdee = bmr * mult;
+  const calAdj = { cut:-500, maintain:0, bulk:300, aggressive_bulk:600 };
+  const calories = Math.round(tdee + (calAdj[target] || 0));
+  
+  const protein = Math.round(w * 2.2);
+  const fat = Math.round(calories * 0.25 / 9);
+  let carbs;
+  if (diet === 'keto') {
+    carbs = 25;
+  } else {
+    carbs = Math.round((calories - protein*4 - fat*9) / 4);
+  }
+  
+  // Show macro cards
+  const nutOut = document.getElementById('nut-output');
+  document.getElementById('nut-empty').style.display = 'none';
+  nutOut.style.display = 'block';
+  nutOut.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-label" style="margin-bottom:16px;">Daily Targets</div>
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-family:var(--font-display);font-size:56px;color:var(--acid);line-height:1;">${calories}</div>
+        <div style="font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);">Calories/day</div>
+      </div>
+      <div class="macro-grid">
+        <div class="macro-card">
+          <div class="macro-value" style="color:var(--acid);">${protein}g</div>
+          <div class="macro-label">Protein</div>
+        </div>
+        <div class="macro-card">
+          <div class="macro-value" style="color:var(--ice);">${carbs}g</div>
+          <div class="macro-label">Carbs</div>
+        </div>
+        <div class="macro-card">
+          <div class="macro-value" style="color:var(--fire);">${fat}g</div>
+          <div class="macro-label">Fat</div>
+        </div>
+      </div>
+    </div>`;
+  
+  // Generate meal plan
+  const mealOut = document.getElementById('meal-plan-output');
+  const mealEmpty = document.getElementById('meal-plan-empty');
+  mealEmpty.style.display = 'none';
+  mealOut.style.display = 'block';
+  mealOut.textContent = 'Generating meal plan...';
+  
+  const prompt = `Create a detailed 1-day meal plan for an athlete:
+Calories: ${calories}/day | Protein: ${protein}g | Carbs: ${carbs}g | Fat: ${fat}g
+Diet type: ${diet} | Goal: ${target} | Weight: ${w}kg
+
+Include 4-5 meals with specific foods, portion sizes, and macro breakdown per meal. Be practical and realistic.`;
+  
+  try {
+    let plan = '';
+    if (state.apiKey && state.apiKey.startsWith('sk-')) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.apiKey },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a sports nutritionist. Create detailed, practical meal plans.' },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 800
+        })
+      });
+      const data = await res.json();
+      plan = data.choices[0].message.content;
+    } else {
+      plan = generateDemoMealPlan(calories, protein, carbs, fat, w);
+    }
+    mealOut.innerHTML = formatPlanText(plan);
+    showToast('✓ Nutrition plan ready!');
+  } catch(e) {
+    mealOut.textContent = 'Error generating meal plan. Check API key.';
+  }
+}
+
+function generateDemoMealPlan(cal, prot, carbs, fat, weight) {
+  return `🥗 DAILY MEAL PLAN — ${cal} CALORIES
+
+🌅 MEAL 1 — BREAKFAST (7:00 AM)
+• 4 whole eggs + 2 egg whites (scrambled)
+• 100g oats with berries
+• 1 cup black coffee
+📊 ~${Math.round(prot*0.25)}g protein | ${Math.round(carbs*0.3)}g carbs | ${Math.round(fat*0.2)}g fat
+
+🍽️ MEAL 2 — LUNCH (12:30 PM)
+• 200g chicken breast (grilled)
+• 150g brown rice
+• Large salad with olive oil dressing
+📊 ~${Math.round(prot*0.3)}g protein | ${Math.round(carbs*0.35)}g carbs | ${Math.round(fat*0.25)}g fat
+
+💪 MEAL 3 — PRE-WORKOUT (3:30 PM)
+• 1 scoop whey protein + 300ml milk
+• 1 banana
+• 30g oats
+📊 ~${Math.round(prot*0.2)}g protein | ${Math.round(carbs*0.2)}g carbs | ${Math.round(fat*0.1)}g fat
+
+🏋️ MEAL 4 — POST-WORKOUT (6:30 PM)
+• 200g salmon or beef
+• 200g sweet potato
+• Broccoli + asparagus
+📊 ~${Math.round(prot*0.3)}g protein | ${Math.round(carbs*0.25)}g carbs | ${Math.round(fat*0.3)}g fat
+
+🌙 MEAL 5 — EVENING (9:00 PM)
+• 200g Greek yogurt (full fat)
+• 30g almonds
+• Casein shake (optional)
+📊 ~${Math.round(prot*0.15)}g protein | ${Math.round(carbs*0.1)}g carbs | ${Math.round(fat*0.15)}g fat
+
+💧 HYDRATION: Drink ${Math.round(weight * 0.035 * 10)/10}L water daily + extra during training
+⚡ DEMO MODE — Connect OpenAI API for personalized AI meal planning`;
+}
+
+// ============================================================
+// ANALYTICS INSIGHT
+// ============================================================
+async function getAIInsight() {
+  const div = document.getElementById('ai-insight');
+  div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><div style="background:var(--acid);color:#000;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">GPT-4 ANALYSIS</div></div><div class="spinner"></div> Analyzing your data...`;
+  
+  const prompt = `Analyze this athlete's training data and provide insights:
+- BMI: ${(state.user.weight / Math.pow(state.user.height/100, 2)).toFixed(1)}
+- Goal: ${state.user.goal}
+- Level: ${state.user.level}
+- Volume trend: improving (+12% week over week)
+- Consistency: 75% (3/4 days trained)
+- Weakest area: Shoulders (60% intensity)
+- Strongest area: Back (85% intensity)
+
+Give 3 specific, actionable insights and 1 warning. Be direct and professional.`;
+  
+  try {
+    let insight = '';
+    if (state.apiKey && state.apiKey.startsWith('sk-')) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.apiKey },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 400
+        })
+      });
+      const data = await res.json();
+      insight = data.choices[0].message.content;
+    } else {
+      insight = `**📈 Insight 1: Volume Is Trending Right**\nYour +12% weekly volume increase is within the safe 5-15% range. Keep this pace for 3 more weeks before a deload.\n\n**⚠️ Insight 2: Shoulder Weakness Is a Risk**\nAt 60% intensity, shoulders lag significantly behind back (85%). This imbalance can lead to rotator cuff issues. Add 1 extra shoulder session this week.\n\n**🎯 Insight 3: 75% Consistency Is Good, Not Great**\nYou're missing ~1 workout per week. The gap between good and elite is often just this. Identify what causes missed sessions.\n\n**🔴 Warning:** Volume is high — schedule a deload week in 2 weeks to prevent overtraining.`;
+    }
+    div.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;"><div style="background:var(--acid);color:#000;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">GPT-4 ANALYSIS</div></div>` + formatPlanText(insight);
+  } catch(e) {
+    div.innerHTML = 'Error fetching insight. Check API key.';
+  }
+}
+
+// ============================================================
+// PROFILE SAVE
+// ============================================================
+function saveProfile() {
+  state.user.name = document.getElementById('prof-name-input').value || state.user.name;
+  state.user.age = document.getElementById('prof-age-input').value;
+  state.user.gender = document.getElementById('prof-gender-input').value;
+  state.user.weight = document.getElementById('prof-weight-input').value;
+  state.user.height = document.getElementById('prof-height-input').value;
+  populateProfile();
+  updateBMI();
+  const fn = state.user.name.split(' ')[0].toUpperCase();
+  document.getElementById('dash-name').textContent = fn;
+  showToast('✓ Profile saved!');
+}
+
+function updateApiKey() {
+  const newKey = document.getElementById('api-key-profile').value.trim();
+  state.apiKey = newKey;
+  document.getElementById('api-status-text').textContent = newKey ? 'AI Connected' : 'No API Key';
+  showToast('✓ API key updated!');
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function initCharts() {
+  const chartDefaults = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 11 } } }
+    }
+  };
+  
+  // Volume chart
+  new Chart(document.getElementById('volumeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8'],
+      datasets: [{
+        data: [42, 47, 51, 44, 58, 62, 68, 72],
+        backgroundColor: 'rgba(200,255,0,0.7)',
+        borderRadius: 4,
+        borderSkipped: false
+      }]
+    },
+    options: chartDefaults
+  });
+  
+  // Strength chart
+  new Chart(document.getElementById('strengthChart'), {
+    type: 'line',
+    data: {
+      labels: ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8'],
+      datasets: [{
+        data: [80, 82.5, 82.5, 85, 87.5, 87.5, 90, 92.5],
+        borderColor: 'rgba(0,207,255,1)',
+        backgroundColor: 'rgba(0,207,255,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgba(0,207,255,1)',
+        pointRadius: 4
+      }]
+    },
+    options: chartDefaults
+  });
+}
+
+// ============================================================
+// HEATMAP
+// ============================================================
+function generateHeatmap() {
+  const heatmap = document.getElementById('heatmap');
+  const levels = ['', 'l1', 'l2', 'l3', 'l4'];
+  for (let i = 0; i < 371; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'heatmap-cell';
+    const r = Math.random();
+    if (r > 0.6) {
+      const lvl = Math.ceil(Math.random() * 4);
+      cell.classList.add(levels[lvl]);
+    }
+    heatmap.appendChild(cell);
+  }
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg, icon = '✓') {
+  const toast = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  document.getElementById('toast-icon').textContent = icon;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ============================================================
+// RING ANIMATION
+// ============================================================
+function updateRing(pct) {
+  const circumference = 327;
+  const offset = circumference - (pct / 100) * circumference;
+  document.getElementById('ring-fill').style.strokeDashoffset = offset;
+  document.getElementById('ring-pct').textContent = pct + '%';
+}
+
+// Init ring at 0 then animate
+setTimeout(() => updateRing(0), 500);
+
+// ============================================================
+// RANGE INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  updateRange('plan-days', 'days-val');
+  updateRange('plan-duration', 'dur-val', 'min');
+});
+
+// Fix range display on load
+window.addEventListener('load', () => {
+  if (document.getElementById('days-val')) {
+    document.getElementById('days-val').textContent = '4 days';
+    document.getElementById('dur-val').textContent = '60 min';
+  }
+});
+</script>
+</body>
+</html>
