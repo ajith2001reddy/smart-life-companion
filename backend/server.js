@@ -69,18 +69,20 @@ const aiLimiter = rateLimit({
 });
 
 /* ═══════════ STANDARD MIDDLEWARE ═══════════ */
-app.use(
-    cors({
-        origin: [
-            "http://localhost:3000",
-            "https://smart-life-companion.vercel.app"
-        ],
-        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
-        credentials: true,
-    })
-);
+const allowedOrigin = "https://smart-life-companion.vercel.app";
 
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", allowedOrigin);
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+    if (req.method === "OPTIONS") {
+        return res.sendStatus(200);
+    }
+
+    next();
+});
 app.use(express.json({ limit: "5mb" }));
 
 /* ═══════════ ROUTES ═══════════ */
