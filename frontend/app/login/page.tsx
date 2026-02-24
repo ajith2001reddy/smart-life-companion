@@ -1,10 +1,11 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
+import { handleGoogleRedirectResult } from "@/lib/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -15,7 +16,22 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
+    useEffect(() => {
+        const processRedirect = async () => {
+            try {
+                const data = await handleGoogleRedirectResult();
 
+                if (data?.token) {
+                    login(data.token);
+                    router.replace("/dashboard");
+                }
+            } catch (err) {
+                console.error("Redirect login failed:", err);
+            }
+        };
+
+        processRedirect();
+    }, []);
     // ─────────────────────────────────────────────
     // Email / Password Login (Firebase)
     // ─────────────────────────────────────────────
@@ -54,17 +70,12 @@ export default function LoginPage() {
             setGLoading(true);
             setError("");
 
-            const data = await signInWithGoogle();
-
-            login(data.token);
-
-            router.replace("/dashboard");
+            await signInWithGoogle(); // this redirects
 
         } catch (err: any) {
             if (err.message !== "Sign-in cancelled.") {
                 setError(err.message || "Google sign-in failed.");
             }
-        } finally {
             setGLoading(false);
         }
     };

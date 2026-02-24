@@ -12,17 +12,47 @@
 // ============================================================
 
 import { initializeApp, getApps } from "firebase/app";
+import { getRedirectResult } from "firebase/auth";
 import {
     getAuth,
     GoogleAuthProvider,
     signInWithPopup,
+    signInWithRedirect,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
     signOut,
     type UserCredential,
 } from "firebase/auth";
+// ============================================================
+// HANDLE GOOGLE REDIRECT RESULT (NEW - ADD ONLY)
+// ============================================================
+export async function handleGoogleRedirectResult() {
+    const result = await getRedirectResult(firebaseAuth);
 
+    if (!result?.user) return null;
+
+    const idToken = await result.user.getIdToken();
+
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error || "Backend authentication failed.");
+    }
+
+    await signOut(firebaseAuth);
+
+    return data;
+}
 // ─────────────────────────────────────────────
 // Firebase Config (from .env.local)
 // ─────────────────────────────────────────────
@@ -58,7 +88,7 @@ export async function signInWithGoogle() {
     let result: UserCredential;
 
     try {
-        result = await signInWithPopup(firebaseAuth, googleProvider);
+        result = await signInWithRedirect(firebaseAuth, googleProvider);
     } catch (err: any) {
         if (err.code === "auth/popup-closed-by-user") {
             throw new Error("Sign-in cancelled.");
