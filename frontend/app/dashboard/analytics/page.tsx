@@ -6,7 +6,7 @@ import {
     AreaChart, Area, BarChart, Bar, LineChart, Line,
     XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from "recharts";
-import { Variants } from "framer-motion";
+
 type Stats = {
     performanceScore: number;
     weeklyVolume: number;
@@ -15,8 +15,8 @@ type Stats = {
 };
 
 type TrendAlert = { type: "positive" | "negative" | "neutral"; message: string; metric: string };
-
-const fadeIn: Variants = {
+import { Variants } from "framer-motion";
+const fadeUp: Variants = {
     hidden: { opacity: 0, y: 20 },
     show: {
         opacity: 1,
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
         <div className="space-y-8 sm:space-y-10">
 
             {/* ── HEADER ── */}
-            <motion.div variants={fadeUp(0)} initial="hidden" animate="show" className="flex items-start justify-between gap-4">
+            <motion.div variants={fadeUp} initial="hidden" animate="show" className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-[#c8ff00] text-xs tracking-widest uppercase mb-2">Performance Intelligence</p>
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Analytics</h1>
@@ -186,7 +186,7 @@ export default function AnalyticsPage() {
             </motion.div>
 
             {/* ── KPI GRID ── */}
-            <motion.div variants={fadeUp(0.1)} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <motion.div variants={fadeUp} initial="hidden" animate="show" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {kpis.map((k) => (
                     <motion.div key={k.label} whileHover={{ y: -4 }} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-2xl p-5 sm:p-6 group">
                         <div className="flex items-start justify-between mb-3">
@@ -204,7 +204,7 @@ export default function AnalyticsPage() {
             </motion.div>
 
             {/* ── TABS ── */}
-            <motion.div variants={fadeUp(0.15)} initial="hidden" animate="show">
+            <motion.div variants={fadeUp} initial="hidden" animate="show">
                 <div className="flex flex-wrap gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
                     {([
                         { id: "overview", label: "📊 Overview" },
