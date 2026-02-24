@@ -16,7 +16,7 @@ import { getRedirectResult } from "firebase/auth";
 import {
     getAuth,
     GoogleAuthProvider,
-    signInWithPopup,
+
     signInWithRedirect,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
