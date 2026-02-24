@@ -786,13 +786,33 @@ export default function NutritionPage() {
                                 {favorites.map((fav) => (
                                     <motion.div key={fav.id} whileHover={{ scale: 1.01 }}
                                         className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/8 group">
-                                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => { handleAddMeal(fav); setShowFavorites(false); }}>
+                                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => {
+                                            handleAddMeal({
+                                                name: fav.name,
+                                                calories: String(fav.calories),
+                                                protein: String(fav.protein),
+                                                carbs: String(fav.carbs),
+                                                fat: String(fav.fat),
+                                                time: fav.time,
+                                            });
+                                            setShowFavorites(false);
+                                        }}>
                                             <p className="text-sm font-medium truncate">{fav.name}</p>
                                             <p className="text-xs text-white/30 mt-0.5">{fav.calories} kcal · P:{fav.protein}g · C:{fav.carbs}g · F:{fav.fat}g</p>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
                                             <motion.button whileTap={{ scale: 0.95 }}
-                                                onClick={() => { handleAddMeal(fav); setShowFavorites(false); }}
+                                                onClick={() => {
+                                                    handleAddMeal({
+                                                        name: fav.name,
+                                                        calories: String(fav.calories),
+                                                        protein: String(fav.protein),
+                                                        carbs: String(fav.carbs),
+                                                        fat: String(fav.fat),
+                                                        time: fav.time,
+                                                    });
+                                                    setShowFavorites(false);
+                                                }}
                                                 className="text-xs px-3 py-1.5 rounded-xl bg-[#c8ff00] text-black font-bold">
                                                 + Add
                                             </motion.button>
