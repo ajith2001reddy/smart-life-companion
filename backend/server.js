@@ -3,7 +3,8 @@
 // Added: helmet, rate limiting, workout routes, coach memory,
 //        weekly report cron job
 // ============================================================
-
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 require("dotenv").config();
 
 const express = require("express");
@@ -34,10 +35,9 @@ const auth = require("./middleware/auth");
 const app = express();
 
 /* ═══════════ DATABASE ═══════════ */
-mongoose
-    .connect(process.env.MONGO_URI)
-    .then(() => console.log("🟢 MongoDB Connected"))
-    .catch((err) => console.error("MongoDB Error:", err));
+const connectDB = require("./config/db");
+
+connectDB();
 
 /* ═══════════ SECURITY MIDDLEWARE ═══════════ */
 

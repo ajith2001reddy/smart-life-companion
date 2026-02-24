@@ -1,7 +1,10 @@
 import type { NextConfig } from "next/dist/server/config-shared";
 
-const nextConfig: NextConfig = {
-  /* config options here */
+
+const nextConfig = {
+  allowedDevOrigins: [
+    "http://10.0.0.49:3000",
+  ],
 };
 
-export default nextConfig;
+module.exports = nextConfig;
