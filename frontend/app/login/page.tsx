@@ -21,7 +21,8 @@ export default function LoginPage() {
             try {
                 const data = await handleGoogleRedirectResult();
 
-                if (data?.token) {
+
+                if (data && data.token) {
                     login(data.token);
                     router.replace("/dashboard");
                 }
@@ -30,7 +31,10 @@ export default function LoginPage() {
             }
         };
 
-        processRedirect();
+        // small delay ensures Firebase is ready
+        setTimeout(() => {
+            processRedirect();
+        }, 500);
     }, []);
     // ─────────────────────────────────────────────
     // Email / Password Login (Firebase)
