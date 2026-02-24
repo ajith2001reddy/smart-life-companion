@@ -30,6 +30,8 @@ import {
 export async function handleGoogleRedirectResult() {
     const result = await getRedirectResult(firebaseAuth);
 
+    console.log("Redirect result:", result); // 👈 ADD THIS LINE
+
     if (!result?.user) return null;
 
     const idToken = await result.user.getIdToken();
