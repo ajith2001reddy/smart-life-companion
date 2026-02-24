@@ -44,7 +44,8 @@ connectDB();
 // Helmet sets secure HTTP headers
 app.use(
     helmet({
-        crossOriginResourcePolicy: false, // allow Next.js image requests
+        crossOriginResourcePolicy: false,
+        crossOriginOpenerPolicy: false,
     })
 );
 
