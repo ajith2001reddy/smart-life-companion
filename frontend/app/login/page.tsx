@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
 import { handleGoogleRedirectResult } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -17,24 +19,33 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
     useEffect(() => {
-        const processRedirect = async () => {
+        const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+            if (!user) return;
+
             try {
-                const data = await handleGoogleRedirectResult();
+                const idToken = await user.getIdToken();
 
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ idToken }),
+                    }
+                );
 
-                if (data && data.token) {
+                const data = await res.json();
+
+                if (res.ok && data.token) {
                     login(data.token);
                     router.replace("/dashboard");
                 }
             } catch (err) {
-                console.error("Redirect login failed:", err);
+                console.error("Google login failed:", err);
             }
-        };
+        });
 
-        // small delay ensures Firebase is ready
-        setTimeout(() => {
-            processRedirect();
-        }, 500);
+        return () => unsubscribe();
     }, []);
     // ─────────────────────────────────────────────
     // Email / Password Login (Firebase)
