@@ -1,1525 +1,189 @@
 TS PROJECT PART 4 of 20
 ==============================
---- FILE: .\.vs\smart-life-companion\config\applicationhost.config ---
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-
-    IIS configuration sections.
-
-    For schema documentation, see
-    %IIS_BIN%\config\schema\IIS_schema.xml.
-    
-    Please make a backup of this file before making any changes to it.
-
-    NOTE: The following environment variables are available to be used
-          within this file and are understood by the IIS Express.
-
-          %IIS_USER_HOME% - The IIS Express home directory for the user
-          %IIS_SITES_HOME% - The default home directory for sites
-          %IIS_BIN% - The location of the IIS Express binaries
-          %SYSTEMDRIVE% - The drive letter of %IIS_BIN%
-
--->
-<configuration>
-
-    <!--
-
-        The <configSections> section controls the registration of sections.
-        Section is the basic unit of deployment, locking, searching and
-        containment for configuration settings.
-        
-        Every section belongs to one section group.
-        A section group is a container of logically-related sections.
-        
-        Sections cannot be nested.
-        Section groups may be nested.
-        
-        <section
-            name=""  [Required, Collection Key] [XML name of the section]
-            allowDefinition="Everywhere" [MachineOnly|MachineToApplication|AppHostOnly|Everywhere] [Level where it can be set]
-            overrideModeDefault="Allow"  [Allow|Deny] [Default delegation mode]
-            allowLocation="true"  [true|false] [Allowed in location tags]
-        />
-        
-        The recommended way to unlock sections is by using a location tag:
-        <location path="Default Web Site" overrideMode="Allow">
-            <system.webServer>
-                <asp />
-            </system.webServer>
-        </location>
-
-    -->
-    <configSections>
-        <sectionGroup name="system.applicationHost">
-            <section name="applicationPools" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="configHistory" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="customMetadata" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="listenerAdapters" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="log" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="serviceAutoStartProviders" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="sites" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="webLimits" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-        </sectionGroup>
-
-        <sectionGroup name="system.webServer">
-            <section name="asp" overrideModeDefault="Deny" />
-            <section name="caching" overrideModeDefault="Allow" />
-            <section name="cgi" overrideModeDefault="Deny" />
-            <section name="defaultDocument" overrideModeDefault="Allow" />
-            <section name="directoryBrowse" overrideModeDefault="Allow" />
-            <section name="fastCgi" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="globalModules" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-            <section name="handlers" overrideModeDefault="Deny" />
-            <section name="httpCompression" overrideModeDefault="Allow" allowDefinition="Everywhere" />
-            <section name="httpErrors" overrideModeDefault="Allow" />
-            <section name="httpLogging" overrideModeDefault="Deny" />
-            <section name="httpProtocol" overrideModeDefault="Allow" />
-            <section name="httpRedirect" overrideModeDefault="Allow" />
-            <section name="httpTracing" overrideModeDefault="Deny" />
-            <section name="isapiFilters" allowDefinition="MachineToApplication" overrideModeDefault="Deny" />
-            <section name="modules" allowDefinition="MachineToApplication" overrideModeDefault="Deny" />
-            <section name="applicationInitialization" allowDefinition="MachineToApplication" overrideModeDefault="Allow" />
-            <section name="odbcLogging" overrideModeDefault="Deny" />
-            <sectionGroup name="security">
-                <section name="access" overrideModeDefault="Deny" />
-                <section name="applicationDependencies" overrideModeDefault="Deny" />
-                <sectionGroup name="authentication">
-                    <section name="anonymousAuthentication" overrideModeDefault="Deny" />
-                    <section name="basicAuthentication" overrideModeDefault="Deny" />
-                    <section name="clientCertificateMappingAuthentication" overrideModeDefault="Deny" />
-                    <section name="digestAuthentication" overrideModeDefault="Deny" />
-                    <section name="iisClientCertificateMappingAuthentication" overrideModeDefault="Deny" />
-                    <section name="windowsAuthentication" overrideModeDefault="Deny" />
-                </sectionGroup>
-                <section name="authorization" overrideModeDefault="Allow" />
-                <section name="ipSecurity" overrideModeDefault="Deny" />
-                <section name="dynamicIpSecurity" overrideModeDefault="Deny" />
-                <section name="isapiCgiRestriction" allowDefinition="AppHostOnly" overrideModeDefault="Deny" />
-                <section name="requestFiltering" overrideModeDefault="Allow" />
-            </sectionGroup>
-            <section name="serverRuntime" overrideModeDefault="Deny" />
-            <section name="serverSideInclude" overrideModeDefault="Deny" />
-            <section name="staticContent" overrideModeDefault="Allow" />
-            <sectionGroup name="tracing">
-                <section name="traceFailedRequests" overrideModeDefault="Allow" />
-                <section name="traceProviderDefinitions" overrideModeDefault="Deny" />
-            </sectionGroup>
-            <section name="urlCompression" overrideModeDefault="Allow" />
-            <section name="validation" overrideModeDefault="Allow" />
-            <sectionGroup name="webdav">
-                <section name="globalSettings" overrideModeDefault="Deny" />
-                <section name="authoring" overrideModeDefault="Deny" />
-                <section name="authoringRules" overrideModeDefault="Deny" />
-            </sectionGroup>
-            <sectionGroup name="rewrite">
-                <section name="allowedServerVariables" overrideModeDefault="Deny" />
-                <section name="rules" overrideModeDefault="Allow" />
-                <section name="outboundRules" overrideModeDefault="Allow" />
-                <section name="globalRules" overrideModeDefault="Deny" allowDefinition="AppHostOnly" />
-                <section name="providers" overrideModeDefault="Allow" />
-                <section name="rewriteMaps" overrideModeDefault="Allow" />
-            </sectionGroup>
-            <section name="webSocket" overrideModeDefault="Deny" />
-        <section name="aspNetCore" overrideModeDefault="Allow" /></sectionGroup>
-    </configSections>
-
-    <configProtectedData>
-        <providers>
-            <add name="IISWASOnlyRsaProvider" type="" description="Uses RsaCryptoServiceProvider to encrypt and decrypt" keyContainerName="iisWasKey" cspProviderName="" useMachineContainer="true" useOAEP="false" />
-            <add name="AesProvider" type="Microsoft.ApplicationHost.AesProtectedConfigurationProvider" description="Uses an AES session key to encrypt and decrypt" keyContainerName="iisConfigurationKey" cspProviderName="" useOAEP="false" useMachineContainer="true" sessionKey="AQIAAA5mAAAApAAA/HKxkz6alrlAPez0IUgujj/6k3WxCDriHp6jvpv3yEZmo7h6SMzGLxo4mTrIQVHSkB7tmElHKfUFTzE2BWF7nFWHY6Z6qmGBauFzwJMwESjril7Gjz69RBFH259HQ6aRDq9Xfx7U7H4HtdmnKNqGjgl/hwPQBGeIlWiDh+sYv3vKB0QU971tjX6H2B+9armlnC8UOuA6JYMDMI/VLLL16sng0fWAy5JYe0YVABVjiAWDW264RZW9Tr1Oax4qHZKg+SdjULxeOc2YmpX+d0yeITo1HkPF1hN1gHpIPIUDo05ilHUNfR3OkjVCIQK4cFKCq1s8NH+y+13MxUC4Fn1AlQ==" />
-            <add name="IISWASOnlyAesProvider" type="Microsoft.ApplicationHost.AesProtectedConfigurationProvider" description="Uses an AES session key to encrypt and decrypt" keyContainerName="iisWasKey" cspProviderName="" useOAEP="false" useMachineContainer="true" sessionKey="AQIAAA5mAAAApAAALmU8lTC+v2qtfQiiiquvvLpUQqKLEXs+jSKoWCM/uPhyB++k4dwug19mGidNK5FYiWK2KYE1yhjVJcbp12E98Q0R2nT7eBiCMY2JairxQ591rqABK7keGaIjwH7PwGzSpILl3RJ4YFvJ/7ZXEJxeDZIjW8ZxWVXx+/VyHs9U3WguLEkgMUX3jrxJi8LouxaIVPJAv/YQ1ZCWs8zImitxX/C/7o7yaIxznfsN5nGQzQfpUDPeby99aw2zPVTtZI2LaWIBON8guABvZ6JtJVDWmfdK6sodbnwdZkr6/Z2rfvamT1dC1SpQrGG7ulR/f9/GXvCaW10ZVKxekBF/CYlNMg==" />
-        </providers>
-    </configProtectedData>
-
-    <system.applicationHost>
-
-        <applicationPools>
-            <add name="Clr4IntegratedAppPool" managedRuntimeVersion="v4.0" managedPipelineMode="Integrated" CLRConfigFile="%IIS_USER_HOME%\config\aspnet.config" autoStart="true" />
-            <add name="Clr4ClassicAppPool" managedRuntimeVersion="v4.0" managedPipelineMode="Classic" CLRConfigFile="%IIS_USER_HOME%\config\aspnet.config" autoStart="true" />
-            <add name="Clr2IntegratedAppPool" managedRuntimeVersion="v2.0" managedPipelineMode="Integrated" CLRConfigFile="%IIS_USER_HOME%\config\aspnet.config" autoStart="true" />
-            <add name="Clr2ClassicAppPool" managedRuntimeVersion="v2.0" managedPipelineMode="Classic" CLRConfigFile="%IIS_USER_HOME%\config\aspnet.config" autoStart="true" />
-            <add name="UnmanagedClassicAppPool" managedRuntimeVersion="" managedPipelineMode="Classic" autoStart="true" />
-            <applicationPoolDefaults managedRuntimeVersion="v4.0">
-                <processModel loadUserProfile="true" setProfileEnvironment="false" />
-            </applicationPoolDefaults>
-        </applicationPools>
-
-        <!--
-
-          The <listenerAdapters> section defines the protocols with which the
-          Windows Process Activation Service (WAS) binds.
-
-        -->
-        <listenerAdapters>
-            <add name="http" />
-        </listenerAdapters>
-
-        <sites>
-            <site name="WebSite1" id="1" serverAutoStart="true">
-                <application path="/">
-                    <virtualDirectory path="/" physicalPath="%IIS_SITES_HOME%\WebSite1" />
-                </application>
-                <bindings>
-                    <binding protocol="http" bindingInformation=":8080:localhost" />
-                </bindings>
-            </site>
-            <siteDefaults>
-                <!-- To enable logging, please change the below attribute "enabled" to "true" -->
-                <logFile logFormat="W3C" directory="%AppData%\Microsoft\IISExpressLogs" enabled="false" />
-                <traceFailedRequestsLogging directory="%AppData%\Microsoft" enabled="false" maxLogFileSizeKB="1024" />
-            </siteDefaults>
-            <applicationDefaults applicationPool="Clr4IntegratedAppPool" />
-            <virtualDirectoryDefaults allowSubDirConfig="true" />
-        </sites>
-
-        <webLimits />
-
-    </system.applicationHost>
-
-    <system.webServer>
-
-        <serverRuntime />
-
-        <asp scriptErrorSentToBrowser="true">
-            <cache diskTemplateCacheDirectory="%TEMP%\iisexpress\ASP Compiled Templates" />
-            <limits />
-        </asp>
-
-        <caching enabled="true" enableKernelCache="true">
-        </caching>
-
-        <cgi />
-
-        <defaultDocument enabled="true">
-            <files>
-                <add value="Default.htm" />
-                <add value="Default.asp" />
-                <add value="index.htm" />
-                <add value="index.html" />
-                <add value="iisstart.htm" />
-                <add value="default.aspx" />
-            </files>
-        </defaultDocument>
-
-        <directoryBrowse enabled="false" />
-
-        <fastCgi />
-
-        <!--
-
-          The <globalModules> section defines all native-code modules.
-          To enable a module, specify it in the <modules> section.
-
-        -->
-        <globalModules>
-            <add name="HttpLoggingModule" image="%IIS_BIN%\loghttp.dll" />
-            <add name="UriCacheModule" image="%IIS_BIN%\cachuri.dll" />
-            <add name="TokenCacheModule" image="%IIS_BIN%\cachtokn.dll" />
-            <add name="DynamicCompressionModule" image="%IIS_BIN%\compdyn.dll" />
-            <add name="StaticCompressionModule" image="%IIS_BIN%\compstat.dll" />
-            <add name="DefaultDocumentModule" image="%IIS_BIN%\defdoc.dll" />
-            <add name="DirectoryListingModule" image="%IIS_BIN%\dirlist.dll" />
-            <add name="ProtocolSupportModule" image="%IIS_BIN%\protsup.dll" />
-            <add name="HttpRedirectionModule" image="%IIS_BIN%\redirect.dll" />
-            <add name="ServerSideIncludeModule" image="%IIS_BIN%\iis_ssi.dll" />
-            <add name="StaticFileModule" image="%IIS_BIN%\static.dll" />
-            <add name="AnonymousAuthenticationModule" image="%IIS_BIN%\authanon.dll" />
-            <add name="CertificateMappingAuthenticationModule" image="%IIS_BIN%\authcert.dll" />
-            <add name="UrlAuthorizationModule" image="%IIS_BIN%\urlauthz.dll" />
-            <add name="BasicAuthenticationModule" image="%IIS_BIN%\authbas.dll" />
-            <add name="WindowsAuthenticationModule" image="%IIS_BIN%\authsspi.dll" />
-            <add name="IISCertificateMappingAuthenticationModule" image="%IIS_BIN%\authmap.dll" />
-            <add name="IpRestrictionModule" image="%IIS_BIN%\iprestr.dll" />
-            <add name="DynamicIpRestrictionModule" image="%IIS_BIN%\diprestr.dll" />
-            <add name="RequestFilteringModule" image="%IIS_BIN%\modrqflt.dll" />
-            <add name="CustomLoggingModule" image="%IIS_BIN%\logcust.dll" />
-            <add name="CustomErrorModule" image="%IIS_BIN%\custerr.dll" />
-            <add name="FailedRequestsTracingModule" image="%IIS_BIN%\iisfreb.dll" />
-            <add name="RequestMonitorModule" image="%IIS_BIN%\iisreqs.dll" />
-            <add name="IsapiModule" image="%IIS_BIN%\isapi.dll" />
-            <add name="IsapiFilterModule" image="%IIS_BIN%\filter.dll" />
-            <add name="CgiModule" image="%IIS_BIN%\cgi.dll" />
-            <add name="FastCgiModule" image="%IIS_BIN%\iisfcgi.dll" />
-<!--            <add name="WebDAVModule" image="%IIS_BIN%\webdav.dll" /> -->
-            <add name="RewriteModule" image="%IIS_BIN%\rewrite.dll" />
-            <add name="ConfigurationValidationModule" image="%IIS_BIN%\validcfg.dll" />
-            <add name="WebSocketModule" image="%IIS_BIN%\iiswsock.dll" />
-            <add name="WebMatrixSupportModule" image="%IIS_BIN%\webmatrixsup.dll" />
-            <add name="ManagedEngine" image="%windir%\Microsoft.NET\Framework\v2.0.50727\webengine.dll" preCondition="integratedMode,runtimeVersionv2.0,bitness32" />
-            <add name="ManagedEngine64" image="%windir%\Microsoft.NET\Framework64\v2.0.50727\webengine.dll" preCondition="integratedMode,runtimeVersionv2.0,bitness64" />
-            <add name="ManagedEngineV4.0_32bit" image="%windir%\Microsoft.NET\Framework\v4.0.30319\webengine4.dll" preCondition="integratedMode,runtimeVersionv4.0,bitness32" />
-            <add name="ManagedEngineV4.0_64bit" image="%windir%\Microsoft.NET\Framework64\v4.0.30319\webengine4.dll" preCondition="integratedMode,runtimeVersionv4.0,bitness64" />
-            <add name="ApplicationInitializationModule" image="%IIS_BIN%\warmup.dll" />
-            <add name="AspNetCoreModule" image="%IIS_BIN%\aspnetcore.dll" />
-            <add name="AspNetCoreModuleV2" image="%IIS_BIN%\Asp.Net Core Module\V2\aspnetcorev2.dll" />
-        </globalModules>
-
-        <httpCompression directory="%TEMP%">
-            <scheme name="gzip" dll="%IIS_BIN%\gzip.dll" />
-            <dynamicTypes>
-                <add mimeType="text/*" enabled="true" />
-                <add mimeType="message/*" enabled="true" />
-                <add mimeType="application/x-javascript" enabled="true" />
-                <add mimeType="application/javascript" enabled="true" />
-                <add mimeType="*/*" enabled="false" />
-                <add mimeType="text/event-stream" enabled="false" />
-            </dynamicTypes>
-            <staticTypes>
-                <add mimeType="text/*" enabled="true" />
-                <add mimeType="message/*" enabled="true" />
-                <add mimeType="application/javascript" enabled="true" />
-                <add mimeType="application/atom+xml" enabled="true" />
-                <add mimeType="application/xaml+xml" enabled="true" />
-                <add mimeType="image/svg+xml" enabled="true" />
-                <add mimeType="*/*" enabled="false" />
-            </staticTypes>
-        </httpCompression>
-
-        <httpErrors lockAttributes="allowAbsolutePathsWhenDelegated,defaultPath">
-            <error statusCode="401" prefixLanguageFilePath="%IIS_BIN%\custerr" path="401.htm" />
-            <error statusCode="403" prefixLanguageFilePath="%IIS_BIN%\custerr" path="403.htm" />
-            <error statusCode="404" prefixLanguageFilePath="%IIS_BIN%\custerr" path="404.htm" />
-            <error statusCode="405" prefixLanguageFilePath="%IIS_BIN%\custerr" path="405.htm" />
-            <error statusCode="406" prefixLanguageFilePath="%IIS_BIN%\custerr" path="406.htm" />
-            <error statusCode="412" prefixLanguageFilePath="%IIS_BIN%\custerr" path="412.htm" />
-            <error statusCode="500" prefixLanguageFilePath="%IIS_BIN%\custerr" path="500.htm" />
-            <error statusCode="501" prefixLanguageFilePath="%IIS_BIN%\custerr" path="501.htm" />
-            <error statusCode="502" prefixLanguageFilePath="%IIS_BIN%\custerr" path="502.htm" />
-        </httpErrors>
-
-        <httpLogging dontLog="false" />
-
-        <httpProtocol>
-            <customHeaders>
-                <clear />
-                <add name="X-Powered-By" value="ASP.NET" />
-            </customHeaders>
-            <redirectHeaders>
-                <clear />
-            </redirectHeaders>
-        </httpProtocol>
-
-        <httpRedirect enabled="false" />
-
-        <httpTracing />
-
-        <isapiFilters>
-            <filter name="ASP.Net_2.0.50727-64" path="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_filter.dll" enableCache="true" preCondition="bitness64,runtimeVersionv2.0" />
-            <filter name="ASP.Net_2.0.50727.0" path="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_filter.dll" enableCache="true" preCondition="bitness32,runtimeVersionv2.0" />
-            <filter name="ASP.Net_2.0_for_v1.1" path="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_filter.dll" enableCache="true" preCondition="runtimeVersionv1.1" />
-            <filter name="ASP.Net_4.0_32bit" path="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_filter.dll" enableCache="true" preCondition="bitness32,runtimeVersionv4.0" />
-            <filter name="ASP.Net_4.0_64bit" path="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_filter.dll" enableCache="true" preCondition="bitness64,runtimeVersionv4.0" />
-        </isapiFilters>
-
-        <odbcLogging />
-
-        <security>
-
-            <access sslFlags="None" />
-
-            <applicationDependencies>
-                <application name="Active Server Pages" groupId="ASP" />
-            </applicationDependencies>
-
-            <authentication>
-
-                <anonymousAuthentication enabled="true" userName="" />
-
-                <basicAuthentication enabled="false" />
-
-                <clientCertificateMappingAuthentication enabled="false" />
-
-                <digestAuthentication enabled="false" />
-
-                <iisClientCertificateMappingAuthentication enabled="false">
-                </iisClientCertificateMappingAuthentication>
-
-                <windowsAuthentication enabled="false">
-                    <providers>
-                        <add value="Negotiate" />
-                        <add value="NTLM" />
-                    </providers>
-                </windowsAuthentication>
-
-            </authentication>
-
-            <authorization>
-                <add accessType="Allow" users="*" />
-            </authorization>
-
-            <ipSecurity allowUnlisted="true" />
-
-            <isapiCgiRestriction notListedIsapisAllowed="true" notListedCgisAllowed="true">
-                <add path="%windir%\Microsoft.NET\Framework64\v4.0.30319\webengine4.dll" allowed="true" groupId="ASP.NET_v4.0" description="ASP.NET_v4.0" />
-                <add path="%windir%\Microsoft.NET\Framework\v4.0.30319\webengine4.dll" allowed="true" groupId="ASP.NET_v4.0" description="ASP.NET_v4.0" />
-                <add path="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" allowed="true" groupId="ASP.NET v2.0.50727" description="ASP.NET v2.0.50727" />
-                <add path="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" allowed="true" groupId="ASP.NET v2.0.50727" description="ASP.NET v2.0.50727" />
-            </isapiCgiRestriction>
-
-            <requestFiltering>
-                <fileExtensions allowUnlisted="true" applyToWebDAV="true">
-                    <add fileExtension=".asa" allowed="false" />
-                    <add fileExtension=".asax" allowed="false" />
-                    <add fileExtension=".ascx" allowed="false" />
-                    <add fileExtension=".master" allowed="false" />
-                    <add fileExtension=".skin" allowed="false" />
-                    <add fileExtension=".browser" allowed="false" />
-                    <add fileExtension=".sitemap" allowed="false" />
-                    <add fileExtension=".config" allowed="false" />
-                    <add fileExtension=".cs" allowed="false" />
-                    <add fileExtension=".csproj" allowed="false" />
-                    <add fileExtension=".vb" allowed="false" />
-                    <add fileExtension=".vbproj" allowed="false" />
-                    <add fileExtension=".webinfo" allowed="false" />
-                    <add fileExtension=".licx" allowed="false" />
-                    <add fileExtension=".resx" allowed="false" />
-                    <add fileExtension=".resources" allowed="false" />
-                    <add fileExtension=".mdb" allowed="false" />
-                    <add fileExtension=".vjsproj" allowed="false" />
-                    <add fileExtension=".java" allowed="false" />
-                    <add fileExtension=".jsl" allowed="false" />
-                    <add fileExtension=".ldb" allowed="false" />
-                    <add fileExtension=".dsdgm" allowed="false" />
-                    <add fileExtension=".ssdgm" allowed="false" />
-                    <add fileExtension=".lsad" allowed="false" />
-                    <add fileExtension=".ssmap" allowed="false" />
-                    <add fileExtension=".cd" allowed="false" />
-                    <add fileExtension=".dsprototype" allowed="false" />
-                    <add fileExtension=".lsaprototype" allowed="false" />
-                    <add fileExtension=".sdm" allowed="false" />
-                    <add fileExtension=".sdmDocument" allowed="false" />
-                    <add fileExtension=".mdf" allowed="false" />
-                    <add fileExtension=".ldf" allowed="false" />
-                    <add fileExtension=".ad" allowed="false" />
-                    <add fileExtension=".dd" allowed="false" />
-                    <add fileExtension=".ldd" allowed="false" />
-                    <add fileExtension=".sd" allowed="false" />
-                    <add fileExtension=".adprototype" allowed="false" />
-                    <add fileExtension=".lddprototype" allowed="false" />
-                    <add fileExtension=".exclude" allowed="false" />
-                    <add fileExtension=".refresh" allowed="false" />
-                    <add fileExtension=".compiled" allowed="false" />
-                    <add fileExtension=".msgx" allowed="false" />
-                    <add fileExtension=".vsdisco" allowed="false" />
-                    <add fileExtension=".rules" allowed="false" />
-                </fileExtensions>
-                <verbs allowUnlisted="true" applyToWebDAV="true" />
-                <hiddenSegments applyToWebDAV="true">
-                    <add segment="web.config" />
-                    <add segment="bin" />
-                    <add segment="App_code" />
-                    <add segment="App_GlobalResources" />
-                    <add segment="App_LocalResources" />
-                    <add segment="App_WebReferences" />
-                    <add segment="App_Data" />
-                    <add segment="App_Browsers" />
-                </hiddenSegments>
-            </requestFiltering>
-
-        </security>
-
-        <serverSideInclude ssiExecDisable="false" />
-
-        <staticContent lockAttributes="isDocFooterFileName">
-            <mimeMap fileExtension=".323" mimeType="text/h323" />
-            <mimeMap fileExtension=".3g2" mimeType="video/3gpp2" />
-            <mimeMap fileExtension=".3gp2" mimeType="video/3gpp2" />
-            <mimeMap fileExtension=".3gp" mimeType="video/3gpp" />
-            <mimeMap fileExtension=".3gpp" mimeType="video/3gpp" />
-            <mimeMap fileExtension=".aac" mimeType="audio/aac" />
-            <mimeMap fileExtension=".aaf" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".aca" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".accdb" mimeType="application/msaccess" />
-            <mimeMap fileExtension=".accde" mimeType="application/msaccess" />
-            <mimeMap fileExtension=".accdt" mimeType="application/msaccess" />
-            <mimeMap fileExtension=".acx" mimeType="application/internet-property-stream" />
-            <mimeMap fileExtension=".adt" mimeType="audio/vnd.dlna.adts" />
-            <mimeMap fileExtension=".adts" mimeType="audio/vnd.dlna.adts" />
-            <mimeMap fileExtension=".afm" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".ai" mimeType="application/postscript" />
-            <mimeMap fileExtension=".aif" mimeType="audio/x-aiff" />
-            <mimeMap fileExtension=".aifc" mimeType="audio/aiff" />
-            <mimeMap fileExtension=".aiff" mimeType="audio/aiff" />
-            <mimeMap fileExtension=".appcache" mimeType="text/cache-manifest" />
-            <mimeMap fileExtension=".application" mimeType="application/x-ms-application" />
-            <mimeMap fileExtension=".art" mimeType="image/x-jg" />
-            <mimeMap fileExtension=".asd" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".asf" mimeType="video/x-ms-asf" />
-            <mimeMap fileExtension=".asi" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".asm" mimeType="text/plain" />
-            <mimeMap fileExtension=".asr" mimeType="video/x-ms-asf" />
-            <mimeMap fileExtension=".asx" mimeType="video/x-ms-asf" />
-            <mimeMap fileExtension=".atom" mimeType="application/atom+xml" />
-            <mimeMap fileExtension=".au" mimeType="audio/basic" />
-            <mimeMap fileExtension=".avi" mimeType="video/avi" />
-            <mimeMap fileExtension=".axs" mimeType="application/olescript" />
-            <mimeMap fileExtension=".bas" mimeType="text/plain" />
-            <mimeMap fileExtension=".bcpio" mimeType="application/x-bcpio" />
-            <mimeMap fileExtension=".bin" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".bmp" mimeType="image/bmp" />
-            <mimeMap fileExtension=".c" mimeType="text/plain" />
-            <mimeMap fileExtension=".cab" mimeType="application/vnd.ms-cab-compressed" />
-            <mimeMap fileExtension=".calx" mimeType="application/vnd.ms-office.calx" />
-            <mimeMap fileExtension=".cat" mimeType="application/vnd.ms-pki.seccat" />
-            <mimeMap fileExtension=".cdf" mimeType="application/x-cdf" />
-            <mimeMap fileExtension=".chm" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".class" mimeType="application/x-java-applet" />
-            <mimeMap fileExtension=".clp" mimeType="application/x-msclip" />
-            <mimeMap fileExtension=".cmx" mimeType="image/x-cmx" />
-            <mimeMap fileExtension=".cnf" mimeType="text/plain" />
-            <mimeMap fileExtension=".cod" mimeType="image/cis-cod" />
-            <mimeMap fileExtension=".cpio" mimeType="application/x-cpio" />
-            <mimeMap fileExtension=".cpp" mimeType="text/plain" />
-            <mimeMap fileExtension=".crd" mimeType="application/x-mscardfile" />
-            <mimeMap fileExtension=".crl" mimeType="application/pkix-crl" />
-            <mimeMap fileExtension=".crt" mimeType="application/x-x509-ca-cert" />
-            <mimeMap fileExtension=".csh" mimeType="application/x-csh" />
-            <mimeMap fileExtension=".css" mimeType="text/css" />
-            <mimeMap fileExtension=".csv" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".cur" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".dcr" mimeType="application/x-director" />
-            <mimeMap fileExtension=".deploy" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".der" mimeType="application/x-x509-ca-cert" />
-            <mimeMap fileExtension=".dib" mimeType="image/bmp" />
-            <mimeMap fileExtension=".dir" mimeType="application/x-director" />
-            <mimeMap fileExtension=".disco" mimeType="text/xml" />
-            <mimeMap fileExtension=".dll" mimeType="application/x-msdownload" />
-            <mimeMap fileExtension=".dll.config" mimeType="text/xml" />
-            <mimeMap fileExtension=".dlm" mimeType="text/dlm" />
-            <mimeMap fileExtension=".doc" mimeType="application/msword" />
-            <mimeMap fileExtension=".docm" mimeType="application/vnd.ms-word.document.macroEnabled.12" />
-            <mimeMap fileExtension=".docx" mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
-            <mimeMap fileExtension=".dot" mimeType="application/msword" />
-            <mimeMap fileExtension=".dotm" mimeType="application/vnd.ms-word.template.macroEnabled.12" />
-            <mimeMap fileExtension=".dotx" mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.template" />
-            <mimeMap fileExtension=".dsp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".dtd" mimeType="text/xml" />
-            <mimeMap fileExtension=".dvi" mimeType="application/x-dvi" />
-            <mimeMap fileExtension=".dvr-ms" mimeType="video/x-ms-dvr" />
-            <mimeMap fileExtension=".dwf" mimeType="drawing/x-dwf" />
-            <mimeMap fileExtension=".dwp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".dxr" mimeType="application/x-director" />
-            <mimeMap fileExtension=".eml" mimeType="message/rfc822" />
-            <mimeMap fileExtension=".emz" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".eot" mimeType="application/vnd.ms-fontobject" />
-            <mimeMap fileExtension=".eps" mimeType="application/postscript" />
-            <mimeMap fileExtension=".esd" mimeType="application/vnd.ms-cab-compressed" />
-            <mimeMap fileExtension=".etx" mimeType="text/x-setext" />
-            <mimeMap fileExtension=".evy" mimeType="application/envoy" />
-            <mimeMap fileExtension=".exe" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".exe.config" mimeType="text/xml" />
-            <mimeMap fileExtension=".fdf" mimeType="application/vnd.fdf" />
-            <mimeMap fileExtension=".fif" mimeType="application/fractals" />
-            <mimeMap fileExtension=".fla" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".flr" mimeType="x-world/x-vrml" />
-            <mimeMap fileExtension=".flv" mimeType="video/x-flv" />
-            <mimeMap fileExtension=".gif" mimeType="image/gif" />
-            <mimeMap fileExtension=".glb" mimeType="model/gltf-binary" />
-            <mimeMap fileExtension=".gtar" mimeType="application/x-gtar" />
-            <mimeMap fileExtension=".gz" mimeType="application/x-gzip" />
-            <mimeMap fileExtension=".h" mimeType="text/plain" />
-            <mimeMap fileExtension=".hdf" mimeType="application/x-hdf" />
-            <mimeMap fileExtension=".hdml" mimeType="text/x-hdml" />
-            <mimeMap fileExtension=".hhc" mimeType="application/x-oleobject" />
-            <mimeMap fileExtension=".hhk" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".hhp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".hlp" mimeType="application/winhlp" />
-            <mimeMap fileExtension=".hqx" mimeType="application/mac-binhex40" />
-            <mimeMap fileExtension=".hta" mimeType="application/hta" />
-            <mimeMap fileExtension=".htc" mimeType="text/x-component" />
-            <mimeMap fileExtension=".htm" mimeType="text/html" />
-            <mimeMap fileExtension=".html" mimeType="text/html" />
-            <mimeMap fileExtension=".htt" mimeType="text/webviewhtml" />
-            <mimeMap fileExtension=".hxt" mimeType="text/html" />
-            <mimeMap fileExtension=".ico" mimeType="image/x-icon" />
-            <mimeMap fileExtension=".ics" mimeType="text/calendar" />
-            <mimeMap fileExtension=".ief" mimeType="image/ief" />
-            <mimeMap fileExtension=".iii" mimeType="application/x-iphone" />
-            <mimeMap fileExtension=".inf" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".ins" mimeType="application/x-internet-signup" />
-            <mimeMap fileExtension=".isp" mimeType="application/x-internet-signup" />
-            <mimeMap fileExtension=".IVF" mimeType="video/x-ivf" />
-            <mimeMap fileExtension=".jar" mimeType="application/java-archive" />
-            <mimeMap fileExtension=".java" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".jck" mimeType="application/liquidmotion" />
-            <mimeMap fileExtension=".jcz" mimeType="application/liquidmotion" />
-            <mimeMap fileExtension=".jfif" mimeType="image/pjpeg" />
-            <mimeMap fileExtension=".jpb" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".jpe" mimeType="image/jpeg" />
-            <mimeMap fileExtension=".jpeg" mimeType="image/jpeg" />
-            <mimeMap fileExtension=".jpg" mimeType="image/jpeg" />
-            <mimeMap fileExtension=".js" mimeType="application/javascript" />
-            <mimeMap fileExtension=".json" mimeType="application/json" />
-            <mimeMap fileExtension=".jsonld" mimeType="application/ld+json" />
-            <mimeMap fileExtension=".jsx" mimeType="text/jscript" />
-            <mimeMap fileExtension=".latex" mimeType="application/x-latex" />
-            <mimeMap fileExtension=".less" mimeType="text/css" />
-            <mimeMap fileExtension=".lit" mimeType="application/x-ms-reader" />
-            <mimeMap fileExtension=".lpk" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".lsf" mimeType="video/x-la-asf" />
-            <mimeMap fileExtension=".lsx" mimeType="video/x-la-asf" />
-            <mimeMap fileExtension=".lzh" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".m13" mimeType="application/x-msmediaview" />
-            <mimeMap fileExtension=".m14" mimeType="application/x-msmediaview" />
-            <mimeMap fileExtension=".m1v" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".m2ts" mimeType="video/vnd.dlna.mpeg-tts" />
-            <mimeMap fileExtension=".m3u" mimeType="audio/x-mpegurl" />
-            <mimeMap fileExtension=".m4a" mimeType="audio/mp4" />
-            <mimeMap fileExtension=".m4v" mimeType="video/mp4" />
-            <mimeMap fileExtension=".man" mimeType="application/x-troff-man" />
-            <mimeMap fileExtension=".manifest" mimeType="application/x-ms-manifest" />
-            <mimeMap fileExtension=".map" mimeType="text/plain" />
-            <mimeMap fileExtension=".mdb" mimeType="application/x-msaccess" />
-            <mimeMap fileExtension=".mdp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".me" mimeType="application/x-troff-me" />
-            <mimeMap fileExtension=".mht" mimeType="message/rfc822" />
-            <mimeMap fileExtension=".mhtml" mimeType="message/rfc822" />
-            <mimeMap fileExtension=".mid" mimeType="audio/mid" />
-            <mimeMap fileExtension=".midi" mimeType="audio/mid" />
-            <mimeMap fileExtension=".mix" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".mmf" mimeType="application/x-smaf" />
-            <mimeMap fileExtension=".mno" mimeType="text/xml" />
-            <mimeMap fileExtension=".mny" mimeType="application/x-msmoney" />
-            <mimeMap fileExtension=".mov" mimeType="video/quicktime" />
-            <mimeMap fileExtension=".movie" mimeType="video/x-sgi-movie" />
-            <mimeMap fileExtension=".mp2" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".mp3" mimeType="audio/mpeg" />
-            <mimeMap fileExtension=".mp4" mimeType="video/mp4" />
-            <mimeMap fileExtension=".mp4v" mimeType="video/mp4" />
-            <mimeMap fileExtension=".mpa" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".mpe" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".mpeg" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".mpg" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".mpp" mimeType="application/vnd.ms-project" />
-            <mimeMap fileExtension=".mpv2" mimeType="video/mpeg" />
-            <mimeMap fileExtension=".ms" mimeType="application/x-troff-ms" />
-            <mimeMap fileExtension=".msi" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".mso" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".mvb" mimeType="application/x-msmediaview" />
-            <mimeMap fileExtension=".mvc" mimeType="application/x-miva-compiled" />
-            <mimeMap fileExtension=".nc" mimeType="application/x-netcdf" />
-            <mimeMap fileExtension=".nsc" mimeType="video/x-ms-asf" />
-            <mimeMap fileExtension=".nws" mimeType="message/rfc822" />
-            <mimeMap fileExtension=".ocx" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".oda" mimeType="application/oda" />
-            <mimeMap fileExtension=".odc" mimeType="text/x-ms-odc" />
-            <mimeMap fileExtension=".ods" mimeType="application/oleobject" />
-            <mimeMap fileExtension=".oga" mimeType="audio/ogg" />
-            <mimeMap fileExtension=".ogg" mimeType="video/ogg" />
-            <mimeMap fileExtension=".ogv" mimeType="video/ogg" />
-            <mimeMap fileExtension=".one" mimeType="application/onenote" />
-            <mimeMap fileExtension=".onea" mimeType="application/onenote" />
-            <mimeMap fileExtension=".onetoc" mimeType="application/onenote" />
-            <mimeMap fileExtension=".onetoc2" mimeType="application/onenote" />
-            <mimeMap fileExtension=".onetmp" mimeType="application/onenote" />
-            <mimeMap fileExtension=".onepkg" mimeType="application/onenote" />
-            <mimeMap fileExtension=".osdx" mimeType="application/opensearchdescription+xml" />
-            <mimeMap fileExtension=".otf" mimeType="font/otf" />
-            <mimeMap fileExtension=".p10" mimeType="application/pkcs10" />
-            <mimeMap fileExtension=".p12" mimeType="application/x-pkcs12" />
-            <mimeMap fileExtension=".p7b" mimeType="application/x-pkcs7-certificates" />
-            <mimeMap fileExtension=".p7c" mimeType="application/pkcs7-mime" />
-            <mimeMap fileExtension=".p7m" mimeType="application/pkcs7-mime" />
-            <mimeMap fileExtension=".p7r" mimeType="application/x-pkcs7-certreqresp" />
-            <mimeMap fileExtension=".p7s" mimeType="application/pkcs7-signature" />
-            <mimeMap fileExtension=".pbm" mimeType="image/x-portable-bitmap" />
-            <mimeMap fileExtension=".pcx" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".pcz" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".pdf" mimeType="application/pdf" />
-            <mimeMap fileExtension=".pfb" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".pfm" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".pfx" mimeType="application/x-pkcs12" />
-            <mimeMap fileExtension=".pgm" mimeType="image/x-portable-graymap" />
-            <mimeMap fileExtension=".pko" mimeType="application/vnd.ms-pki.pko" />
-            <mimeMap fileExtension=".pma" mimeType="application/x-perfmon" />
-            <mimeMap fileExtension=".pmc" mimeType="application/x-perfmon" />
-            <mimeMap fileExtension=".pml" mimeType="application/x-perfmon" />
-            <mimeMap fileExtension=".pmr" mimeType="application/x-perfmon" />
-            <mimeMap fileExtension=".pmw" mimeType="application/x-perfmon" />
-            <mimeMap fileExtension=".png" mimeType="image/png" />
-            <mimeMap fileExtension=".pnm" mimeType="image/x-portable-anymap" />
-            <mimeMap fileExtension=".pnz" mimeType="image/png" />
-            <mimeMap fileExtension=".pot" mimeType="application/vnd.ms-powerpoint" />
-            <mimeMap fileExtension=".potm" mimeType="application/vnd.ms-powerpoint.template.macroEnabled.12" />
-            <mimeMap fileExtension=".potx" mimeType="application/vnd.openxmlformats-officedocument.presentationml.template" />
-            <mimeMap fileExtension=".ppam" mimeType="application/vnd.ms-powerpoint.addin.macroEnabled.12" />
-            <mimeMap fileExtension=".ppm" mimeType="image/x-portable-pixmap" />
-            <mimeMap fileExtension=".pps" mimeType="application/vnd.ms-powerpoint" />
-            <mimeMap fileExtension=".ppsm" mimeType="application/vnd.ms-powerpoint.slideshow.macroEnabled.12" />
-            <mimeMap fileExtension=".ppsx" mimeType="application/vnd.openxmlformats-officedocument.presentationml.slideshow" />
-            <mimeMap fileExtension=".ppt" mimeType="application/vnd.ms-powerpoint" />
-            <mimeMap fileExtension=".pptm" mimeType="application/vnd.ms-powerpoint.presentation.macroEnabled.12" />
-            <mimeMap fileExtension=".pptx" mimeType="application/vnd.openxmlformats-officedocument.presentationml.presentation" />
-            <mimeMap fileExtension=".prf" mimeType="application/pics-rules" />
-            <mimeMap fileExtension=".prm" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".prx" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".ps" mimeType="application/postscript" />
-            <mimeMap fileExtension=".psd" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".psm" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".psp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".pub" mimeType="application/x-mspublisher" />
-            <mimeMap fileExtension=".qt" mimeType="video/quicktime" />
-            <mimeMap fileExtension=".qtl" mimeType="application/x-quicktimeplayer" />
-            <mimeMap fileExtension=".qxd" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".ra" mimeType="audio/x-pn-realaudio" />
-            <mimeMap fileExtension=".ram" mimeType="audio/x-pn-realaudio" />
-            <mimeMap fileExtension=".rar" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".ras" mimeType="image/x-cmu-raster" />
-            <mimeMap fileExtension=".rf" mimeType="image/vnd.rn-realflash" />
-            <mimeMap fileExtension=".rgb" mimeType="image/x-rgb" />
-            <mimeMap fileExtension=".rm" mimeType="application/vnd.rn-realmedia" />
-            <mimeMap fileExtension=".rmi" mimeType="audio/mid" />
-            <mimeMap fileExtension=".roff" mimeType="application/x-troff" />
-            <mimeMap fileExtension=".rpm" mimeType="audio/x-pn-realaudio-plugin" />
-            <mimeMap fileExtension=".rtf" mimeType="application/rtf" />
-            <mimeMap fileExtension=".rtx" mimeType="text/richtext" />
-            <mimeMap fileExtension=".scd" mimeType="application/x-msschedule" />
-            <mimeMap fileExtension=".sct" mimeType="text/scriptlet" />
-            <mimeMap fileExtension=".sea" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".setpay" mimeType="application/set-payment-initiation" />
-            <mimeMap fileExtension=".setreg" mimeType="application/set-registration-initiation" />
-            <mimeMap fileExtension=".sgml" mimeType="text/sgml" />
-            <mimeMap fileExtension=".sh" mimeType="application/x-sh" />
-            <mimeMap fileExtension=".shar" mimeType="application/x-shar" />
-            <mimeMap fileExtension=".sit" mimeType="application/x-stuffit" />
-            <mimeMap fileExtension=".sldm" mimeType="application/vnd.ms-powerpoint.slide.macroEnabled.12" />
-            <mimeMap fileExtension=".sldx" mimeType="application/vnd.openxmlformats-officedocument.presentationml.slide" />
-            <mimeMap fileExtension=".smd" mimeType="audio/x-smd" />
-            <mimeMap fileExtension=".smi" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".smx" mimeType="audio/x-smd" />
-            <mimeMap fileExtension=".smz" mimeType="audio/x-smd" />
-            <mimeMap fileExtension=".snd" mimeType="audio/basic" />
-            <mimeMap fileExtension=".snp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".spc" mimeType="application/x-pkcs7-certificates" />
-            <mimeMap fileExtension=".spl" mimeType="application/futuresplash" />
-            <mimeMap fileExtension=".spx" mimeType="audio/ogg" />
-            <mimeMap fileExtension=".src" mimeType="application/x-wais-source" />
-            <mimeMap fileExtension=".ssm" mimeType="application/streamingmedia" />
-            <mimeMap fileExtension=".sst" mimeType="application/vnd.ms-pki.certstore" />
-            <mimeMap fileExtension=".stl" mimeType="application/vnd.ms-pki.stl" />
-            <mimeMap fileExtension=".sv4cpio" mimeType="application/x-sv4cpio" />
-            <mimeMap fileExtension=".sv4crc" mimeType="application/x-sv4crc" />
-            <mimeMap fileExtension=".svg" mimeType="image/svg+xml" />
-            <mimeMap fileExtension=".svgz" mimeType="image/svg+xml" />
-            <mimeMap fileExtension=".swf" mimeType="application/x-shockwave-flash" />
-            <mimeMap fileExtension=".t" mimeType="application/x-troff" />
-            <mimeMap fileExtension=".tar" mimeType="application/x-tar" />
-            <mimeMap fileExtension=".tcl" mimeType="application/x-tcl" />
-            <mimeMap fileExtension=".tex" mimeType="application/x-tex" />
-            <mimeMap fileExtension=".texi" mimeType="application/x-texinfo" />
-            <mimeMap fileExtension=".texinfo" mimeType="application/x-texinfo" />
-            <mimeMap fileExtension=".tgz" mimeType="application/x-compressed" />
-            <mimeMap fileExtension=".thmx" mimeType="application/vnd.ms-officetheme" />
-            <mimeMap fileExtension=".thn" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".tif" mimeType="image/tiff" />
-            <mimeMap fileExtension=".tiff" mimeType="image/tiff" />
-            <mimeMap fileExtension=".toc" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".tr" mimeType="application/x-troff" />
-            <mimeMap fileExtension=".trm" mimeType="application/x-msterminal" />
-            <mimeMap fileExtension=".ts" mimeType="video/vnd.dlna.mpeg-tts" />
-            <mimeMap fileExtension=".tsv" mimeType="text/tab-separated-values" />
-            <mimeMap fileExtension=".ttf" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".tts" mimeType="video/vnd.dlna.mpeg-tts" />
-            <mimeMap fileExtension=".txt" mimeType="text/plain" />
-            <mimeMap fileExtension=".u32" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".uls" mimeType="text/iuls" />
-            <mimeMap fileExtension=".ustar" mimeType="application/x-ustar" />
-            <mimeMap fileExtension=".vbs" mimeType="text/vbscript" />
-            <mimeMap fileExtension=".vcf" mimeType="text/x-vcard" />
-            <mimeMap fileExtension=".vcs" mimeType="text/plain" />
-            <mimeMap fileExtension=".vdx" mimeType="application/vnd.ms-visio.viewer" />
-            <mimeMap fileExtension=".vml" mimeType="text/xml" />
-            <mimeMap fileExtension=".vsd" mimeType="application/vnd.visio" />
-            <mimeMap fileExtension=".vss" mimeType="application/vnd.visio" />
-            <mimeMap fileExtension=".vst" mimeType="application/vnd.visio" />
-            <mimeMap fileExtension=".vsto" mimeType="application/x-ms-vsto" />
-            <mimeMap fileExtension=".vsw" mimeType="application/vnd.visio" />
-            <mimeMap fileExtension=".vsx" mimeType="application/vnd.visio" />
-            <mimeMap fileExtension=".vtx" mimeType="application/vnd.visio" />
-            <mimeMap fileExtension=".wasm" mimeType="application/wasm" />
-            <mimeMap fileExtension=".wav" mimeType="audio/wav" />
-            <mimeMap fileExtension=".wax" mimeType="audio/x-ms-wax" />
-            <mimeMap fileExtension=".wbmp" mimeType="image/vnd.wap.wbmp" />
-            <mimeMap fileExtension=".wcm" mimeType="application/vnd.ms-works" />
-            <mimeMap fileExtension=".wdb" mimeType="application/vnd.ms-works" />
-            <mimeMap fileExtension=".webm" mimeType="video/webm" />
-            <mimeMap fileExtension=".wks" mimeType="application/vnd.ms-works" />
-            <mimeMap fileExtension=".wm" mimeType="video/x-ms-wm" />
-            <mimeMap fileExtension=".wma" mimeType="audio/x-ms-wma" />
-            <mimeMap fileExtension=".wmd" mimeType="application/x-ms-wmd" />
-            <mimeMap fileExtension=".wmf" mimeType="application/x-msmetafile" />
-            <mimeMap fileExtension=".wml" mimeType="text/vnd.wap.wml" />
-            <mimeMap fileExtension=".wmlc" mimeType="application/vnd.wap.wmlc" />
-            <mimeMap fileExtension=".wmls" mimeType="text/vnd.wap.wmlscript" />
-            <mimeMap fileExtension=".wmlsc" mimeType="application/vnd.wap.wmlscriptc" />
-            <mimeMap fileExtension=".wmp" mimeType="video/x-ms-wmp" />
-            <mimeMap fileExtension=".wmv" mimeType="video/x-ms-wmv" />
-            <mimeMap fileExtension=".wmx" mimeType="video/x-ms-wmx" />
-            <mimeMap fileExtension=".wmz" mimeType="application/x-ms-wmz" />
-            <mimeMap fileExtension=".woff" mimeType="font/x-woff" />
-            <mimeMap fileExtension=".woff2" mimeType="application/font-woff2" />
-            <mimeMap fileExtension=".wps" mimeType="application/vnd.ms-works" />
-            <mimeMap fileExtension=".wri" mimeType="application/x-mswrite" />
-            <mimeMap fileExtension=".wrl" mimeType="x-world/x-vrml" />
-            <mimeMap fileExtension=".wrz" mimeType="x-world/x-vrml" />
-            <mimeMap fileExtension=".wsdl" mimeType="text/xml" />
-            <mimeMap fileExtension=".wtv" mimeType="video/x-ms-wtv" />
-            <mimeMap fileExtension=".wvx" mimeType="video/x-ms-wvx" />
-            <mimeMap fileExtension=".x" mimeType="application/directx" />
-            <mimeMap fileExtension=".xaf" mimeType="x-world/x-vrml" />
-            <mimeMap fileExtension=".xaml" mimeType="application/xaml+xml" />
-            <mimeMap fileExtension=".xap" mimeType="application/x-silverlight-app" />
-            <mimeMap fileExtension=".xbap" mimeType="application/x-ms-xbap" />
-            <mimeMap fileExtension=".xbm" mimeType="image/x-xbitmap" />
-            <mimeMap fileExtension=".xdr" mimeType="text/plain" />
-            <mimeMap fileExtension=".xht" mimeType="application/xhtml+xml" />
-            <mimeMap fileExtension=".xhtml" mimeType="application/xhtml+xml" />
-            <mimeMap fileExtension=".xla" mimeType="application/vnd.ms-excel" />
-            <mimeMap fileExtension=".xlam" mimeType="application/vnd.ms-excel.addin.macroEnabled.12" />
-            <mimeMap fileExtension=".xlc" mimeType="application/vnd.ms-excel" />
-            <mimeMap fileExtension=".xlm" mimeType="application/vnd.ms-excel" />
-            <mimeMap fileExtension=".xls" mimeType="application/vnd.ms-excel" />
-            <mimeMap fileExtension=".xlsb" mimeType="application/vnd.ms-excel.sheet.binary.macroEnabled.12" />
-            <mimeMap fileExtension=".xlsm" mimeType="application/vnd.ms-excel.sheet.macroEnabled.12" />
-            <mimeMap fileExtension=".xlsx" mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
-            <mimeMap fileExtension=".xlt" mimeType="application/vnd.ms-excel" />
-            <mimeMap fileExtension=".xltm" mimeType="application/vnd.ms-excel.template.macroEnabled.12" />
-            <mimeMap fileExtension=".xltx" mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.template" />
-            <mimeMap fileExtension=".xlw" mimeType="application/vnd.ms-excel" />
-            <mimeMap fileExtension=".xml" mimeType="text/xml" />
-            <mimeMap fileExtension=".xof" mimeType="x-world/x-vrml" />
-            <mimeMap fileExtension=".xpm" mimeType="image/x-xpixmap" />
-            <mimeMap fileExtension=".xps" mimeType="application/vnd.ms-xpsdocument" />
-            <mimeMap fileExtension=".xsd" mimeType="text/xml" />
-            <mimeMap fileExtension=".xsf" mimeType="text/xml" />
-            <mimeMap fileExtension=".xsl" mimeType="text/xml" />
-            <mimeMap fileExtension=".xslt" mimeType="text/xml" />
-            <mimeMap fileExtension=".xsn" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".xtp" mimeType="application/octet-stream" />
-            <mimeMap fileExtension=".xwd" mimeType="image/x-xwindowdump" />
-            <mimeMap fileExtension=".z" mimeType="application/x-compress" />
-            <mimeMap fileExtension=".zip" mimeType="application/x-zip-compressed" />
-        </staticContent>
-
-        <tracing>
-
-            <traceFailedRequests>
-                <add path="*">
-                    <traceAreas>
-                        <add provider="ASP" verbosity="Verbose" />
-                        <add provider="ASPNET" areas="Infrastructure,Module,Page,AppServices" verbosity="Verbose" />
-                        <add provider="ISAPI Extension" verbosity="Verbose" />
-                        <add provider="WWW Server" areas="Authentication,Security,Filter,StaticFile,CGI,Compression,Cache,RequestNotifications,Module,Rewrite,WebSocket" verbosity="Verbose" />
-                    </traceAreas>
-                    <failureDefinitions statusCodes="200-999" />
-                </add>
-            </traceFailedRequests>
-
-            <traceProviderDefinitions>
-                <add name="WWW Server" guid="{3a2a4e84-4c21-4981-ae10-3fda0d9b0f83}">
-                    <areas>
-                        <clear />
-                        <add name="Authentication" value="2" />
-                        <add name="Security" value="4" />
-                        <add name="Filter" value="8" />
-                        <add name="StaticFile" value="16" />
-                        <add name="CGI" value="32" />
-                        <add name="Compression" value="64" />
-                        <add name="Cache" value="128" />
-                        <add name="RequestNotifications" value="256" />
-                        <add name="Module" value="512" />
-                        <add name="Rewrite" value="1024" />
-                        <add name="FastCGI" value="4096" />
-                        <add name="WebSocket" value="16384" />
-                        <add name="ANCM" value="65536" />
-                    </areas>
-                </add>
-                <add name="ASP" guid="{06b94d9a-b15e-456e-a4ef-37c984a2cb4b}">
-                    <areas>
-                        <clear />
-                    </areas>
-                </add>
-                <add name="ISAPI Extension" guid="{a1c2040e-8840-4c31-ba11-9871031a19ea}">
-                    <areas>
-                        <clear />
-                    </areas>
-                </add>
-                <add name="ASPNET" guid="{AFF081FE-0247-4275-9C4E-021F3DC1DA35}">
-                    <areas>
-                        <add name="Infrastructure" value="1" />
-                        <add name="Module" value="2" />
-                        <add name="Page" value="4" />
-                        <add name="AppServices" value="8" />
-                    </areas>
-                </add>
-            </traceProviderDefinitions>
-
-        </tracing>
-
-        <urlCompression />
-
-        <validation />
-        <webdav>
-            <globalSettings>
-                <propertyStores>
-                    <add name="webdav_simple_prop" image="%IIS_BIN%\webdav_simple_prop.dll" image32="%IIS_BIN%\webdav_simple_prop.dll" />
-                </propertyStores>
-                <lockStores>
-                    <add name="webdav_simple_lock" image="%IIS_BIN%\webdav_simple_lock.dll" image32="%IIS_BIN%\webdav_simple_lock.dll" />
-                </lockStores>
-
-            </globalSettings>
-            <authoring>
-                <locks enabled="true" lockStore="webdav_simple_lock" />
-            </authoring>
-            <authoringRules />
-        </webdav>
-        <webSocket />
-        <applicationInitialization />
-
-    </system.webServer>
-    <location path="" overrideMode="Allow">
-        <system.webServer>
-            <modules>
-                <add name="IsapiFilterModule" lockItem="true" />
-                <add name="BasicAuthenticationModule" lockItem="true" />
-                <add name="IsapiModule" lockItem="true" />
-                <add name="HttpLoggingModule" lockItem="true" />
-                <add name="DynamicCompressionModule" lockItem="true" />
-                <add name="StaticCompressionModule" lockItem="true" />
-                <add name="DefaultDocumentModule" lockItem="true" />
-                <add name="DirectoryListingModule" lockItem="true" />
-                <add name="ProtocolSupportModule" lockItem="true" />
-                <add name="HttpRedirectionModule" lockItem="true" />
-                <add name="ServerSideIncludeModule" lockItem="true" />
-                <add name="StaticFileModule" lockItem="true" />
-                <add name="AnonymousAuthenticationModule" lockItem="true" />
-                <add name="CertificateMappingAuthenticationModule" lockItem="true" />
-                <add name="UrlAuthorizationModule" lockItem="true" />
-                <add name="WindowsAuthenticationModule" lockItem="true" />
-                <add name="IISCertificateMappingAuthenticationModule" lockItem="true" />
-                <add name="WebMatrixSupportModule" lockItem="true" />
-                <add name="IpRestrictionModule" lockItem="true" />
-                <add name="DynamicIpRestrictionModule" lockItem="true" />
-                <add name="RequestFilteringModule" lockItem="true" />
-                <add name="CustomLoggingModule" lockItem="true" />
-                <add name="CustomErrorModule" lockItem="true" />
-                <add name="FailedRequestsTracingModule" lockItem="true" />
-                <add name="CgiModule" lockItem="true" />
-                <add name="FastCgiModule" lockItem="true" />
-<!--                <add name="WebDAVModule" /> -->
-                <add name="RewriteModule" />
-                <add name="OutputCache" type="System.Web.Caching.OutputCacheModule" preCondition="managedHandler" />
-                <add name="Session" type="System.Web.SessionState.SessionStateModule" preCondition="managedHandler" />
-                <add name="WindowsAuthentication" type="System.Web.Security.WindowsAuthenticationModule" preCondition="managedHandler" />
-                <add name="FormsAuthentication" type="System.Web.Security.FormsAuthenticationModule" preCondition="managedHandler" />
-                <add name="DefaultAuthentication" type="System.Web.Security.DefaultAuthenticationModule" preCondition="managedHandler" />
-                <add name="RoleManager" type="System.Web.Security.RoleManagerModule" preCondition="managedHandler" />
-                <add name="UrlAuthorization" type="System.Web.Security.UrlAuthorizationModule" preCondition="managedHandler" />
-                <add name="FileAuthorization" type="System.Web.Security.FileAuthorizationModule" preCondition="managedHandler" />
-                <add name="AnonymousIdentification" type="System.Web.Security.AnonymousIdentificationModule" preCondition="managedHandler" />
-                <add name="Profile" type="System.Web.Profile.ProfileModule" preCondition="managedHandler" />
-                <add name="UrlMappingsModule" type="System.Web.UrlMappingsModule" preCondition="managedHandler" />
-                <add name="ApplicationInitializationModule" lockItem="true" />
-                <add name="WebSocketModule" lockItem="true" />
-                <add name="ServiceModel-4.0" type="System.ServiceModel.Activation.ServiceHttpModule,System.ServiceModel.Activation,Version=4.0.0.0,Culture=neutral,PublicKeyToken=31bf3856ad364e35" preCondition="managedHandler,runtimeVersionv4.0" />
-                <add name="ConfigurationValidationModule" lockItem="true" />
-                <add name="UrlRoutingModule-4.0" type="System.Web.Routing.UrlRoutingModule" preCondition="managedHandler,runtimeVersionv4.0" />
-                <add name="ScriptModule-4.0" type="System.Web.Handlers.ScriptModule, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" preCondition="managedHandler,runtimeVersionv4.0" />
-                <add name="ServiceModel" type="System.ServiceModel.Activation.HttpModule, System.ServiceModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" preCondition="managedHandler,runtimeVersionv2.0" />
-                <add name="AspNetCoreModule" lockItem="true" />
-                <add name="AspNetCoreModuleV2" lockItem="true" />
-            </modules>
-            <handlers accessPolicy="Read, Script">
-<!--                <add name="WebDAV" path="*" verb="PROPFIND,PROPPATCH,MKCOL,PUT,COPY,DELETE,MOVE,LOCK,UNLOCK" modules="WebDAVModule" resourceType="Unspecified" requireAccess="None" /> -->
-                <add name="AXD-ISAPI-4.0_64bit" path="*.axd" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="PageHandlerFactory-ISAPI-4.0_64bit" path="*.aspx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="SimpleHandlerFactory-ISAPI-4.0_64bit" path="*.ashx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="WebServiceHandlerFactory-ISAPI-4.0_64bit" path="*.asmx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-rem-ISAPI-4.0_64bit" path="*.rem" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-soap-ISAPI-4.0_64bit" path="*.soap" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="svc-ISAPI-4.0_64bit" path="*.svc" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" />
-                <add name="rules-ISAPI-4.0_64bit" path="*.rules" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" />
-                <add name="xoml-ISAPI-4.0_64bit" path="*.xoml" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" />
-                <add name="xamlx-ISAPI-4.0_64bit" path="*.xamlx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" />
-                <add name="aspq-ISAPI-4.0_64bit" path="*.aspq" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="cshtm-ISAPI-4.0_64bit" path="*.cshtm" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="cshtml-ISAPI-4.0_64bit" path="*.cshtml" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="vbhtm-ISAPI-4.0_64bit" path="*.vbhtm" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="vbhtml-ISAPI-4.0_64bit" path="*.vbhtml" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="svc-Integrated" path="*.svc" verb="*" type="System.ServiceModel.Activation.HttpHandler, System.ServiceModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="svc-ISAPI-2.0" path="*.svc" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" />
-                <add name="xoml-Integrated" path="*.xoml" verb="*" type="System.ServiceModel.Activation.HttpHandler, System.ServiceModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="xoml-ISAPI-2.0" path="*.xoml" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" />
-                <add name="rules-Integrated" path="*.rules" verb="*" type="System.ServiceModel.Activation.HttpHandler, System.ServiceModel, Version=3.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="rules-ISAPI-2.0" path="*.rules" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" />
-                <add name="AXD-ISAPI-4.0_32bit" path="*.axd" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="PageHandlerFactory-ISAPI-4.0_32bit" path="*.aspx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="SimpleHandlerFactory-ISAPI-4.0_32bit" path="*.ashx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="WebServiceHandlerFactory-ISAPI-4.0_32bit" path="*.asmx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-rem-ISAPI-4.0_32bit" path="*.rem" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-soap-ISAPI-4.0_32bit" path="*.soap" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="svc-ISAPI-4.0_32bit" path="*.svc" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" />
-                <add name="rules-ISAPI-4.0_32bit" path="*.rules" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" />
-                <add name="xoml-ISAPI-4.0_32bit" path="*.xoml" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" />
-                <add name="xamlx-ISAPI-4.0_32bit" path="*.xamlx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" />
-                <add name="aspq-ISAPI-4.0_32bit" path="*.aspq" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="cshtm-ISAPI-4.0_32bit" path="*.cshtm" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="cshtml-ISAPI-4.0_32bit" path="*.cshtml" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="vbhtm-ISAPI-4.0_32bit" path="*.vbhtm" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="vbhtml-ISAPI-4.0_32bit" path="*.vbhtml" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="TraceHandler-Integrated-4.0" path="trace.axd" verb="GET,HEAD,POST,DEBUG" type="System.Web.Handlers.TraceHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="WebAdminHandler-Integrated-4.0" path="WebAdmin.axd" verb="GET,DEBUG" type="System.Web.Handlers.WebAdminHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="AssemblyResourceLoader-Integrated-4.0" path="WebResource.axd" verb="GET,DEBUG" type="System.Web.Handlers.AssemblyResourceLoader" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="PageHandlerFactory-Integrated-4.0" path="*.aspx" verb="GET,HEAD,POST,DEBUG" type="System.Web.UI.PageHandlerFactory" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="SimpleHandlerFactory-Integrated-4.0" path="*.ashx" verb="GET,HEAD,POST,DEBUG" type="System.Web.UI.SimpleHandlerFactory" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="WebServiceHandlerFactory-Integrated-4.0" path="*.asmx" verb="GET,HEAD,POST,DEBUG" type="System.Web.Script.Services.ScriptHandlerFactory, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="HttpRemotingHandlerFactory-rem-Integrated-4.0" path="*.rem" verb="GET,HEAD,POST,DEBUG" type="System.Runtime.Remoting.Channels.Http.HttpRemotingHandlerFactory, System.Runtime.Remoting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="HttpRemotingHandlerFactory-soap-Integrated-4.0" path="*.soap" verb="GET,HEAD,POST,DEBUG" type="System.Runtime.Remoting.Channels.Http.HttpRemotingHandlerFactory, System.Runtime.Remoting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="svc-Integrated-4.0" path="*.svc" verb="*" type="System.ServiceModel.Activation.ServiceHttpHandlerFactory, System.ServiceModel.Activation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="rules-Integrated-4.0" path="*.rules" verb="*" type="System.ServiceModel.Activation.ServiceHttpHandlerFactory, System.ServiceModel.Activation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="xoml-Integrated-4.0" path="*.xoml" verb="*" type="System.ServiceModel.Activation.ServiceHttpHandlerFactory, System.ServiceModel.Activation, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="xamlx-Integrated-4.0" path="*.xamlx" verb="GET,HEAD,POST,DEBUG" type="System.Xaml.Hosting.XamlHttpHandlerFactory, System.Xaml.Hosting, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="aspq-Integrated-4.0" path="*.aspq" verb="GET,HEAD,POST,DEBUG" type="System.Web.HttpForbiddenHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="cshtm-Integrated-4.0" path="*.cshtm" verb="GET,HEAD,POST,DEBUG" type="System.Web.HttpForbiddenHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="cshtml-Integrated-4.0" path="*.cshtml" verb="GET,HEAD,POST,DEBUG" type="System.Web.HttpForbiddenHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="vbhtm-Integrated-4.0" path="*.vbhtm" verb="GET,HEAD,POST,DEBUG" type="System.Web.HttpForbiddenHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="vbhtml-Integrated-4.0" path="*.vbhtml" verb="GET,HEAD,POST,DEBUG" type="System.Web.HttpForbiddenHandler" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="ScriptHandlerFactoryAppServices-Integrated-4.0" path="*_AppService.axd" verb="*" type="System.Web.Script.Services.ScriptHandlerFactory, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="ScriptResourceIntegrated-4.0" path="*ScriptResource.axd" verb="GET,HEAD" type="System.Web.Handlers.ScriptResourceHandler, System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35" preCondition="integratedMode,runtimeVersionv4.0" />
-                <add name="ASPClassic" path="*.asp" verb="GET,HEAD,POST" modules="IsapiModule" scriptProcessor="%IIS_BIN%\asp.dll" resourceType="File" />
-                <add name="SecurityCertificate" path="*.cer" verb="GET,HEAD,POST" modules="IsapiModule" scriptProcessor="%IIS_BIN%\asp.dll" resourceType="File" />
-                <add name="ISAPI-dll" path="*.dll" verb="*" modules="IsapiModule" resourceType="File" requireAccess="Execute" allowPathInfo="true" />
-                <add name="TraceHandler-Integrated" path="trace.axd" verb="GET,HEAD,POST,DEBUG" type="System.Web.Handlers.TraceHandler" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="WebAdminHandler-Integrated" path="WebAdmin.axd" verb="GET,DEBUG" type="System.Web.Handlers.WebAdminHandler" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="AssemblyResourceLoader-Integrated" path="WebResource.axd" verb="GET,DEBUG" type="System.Web.Handlers.AssemblyResourceLoader" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="PageHandlerFactory-Integrated" path="*.aspx" verb="GET,HEAD,POST,DEBUG" type="System.Web.UI.PageHandlerFactory" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="SimpleHandlerFactory-Integrated" path="*.ashx" verb="GET,HEAD,POST,DEBUG" type="System.Web.UI.SimpleHandlerFactory" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="WebServiceHandlerFactory-Integrated" path="*.asmx" verb="GET,HEAD,POST,DEBUG" type="System.Web.Services.Protocols.WebServiceHandlerFactory,System.Web.Services,Version=2.0.0.0,Culture=neutral,PublicKeyToken=b03f5f7f11d50a3a" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="HttpRemotingHandlerFactory-rem-Integrated" path="*.rem" verb="GET,HEAD,POST,DEBUG" type="System.Runtime.Remoting.Channels.Http.HttpRemotingHandlerFactory,System.Runtime.Remoting,Version=2.0.0.0,Culture=neutral,PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="HttpRemotingHandlerFactory-soap-Integrated" path="*.soap" verb="GET,HEAD,POST,DEBUG" type="System.Runtime.Remoting.Channels.Http.HttpRemotingHandlerFactory,System.Runtime.Remoting,Version=2.0.0.0,Culture=neutral,PublicKeyToken=b77a5c561934e089" preCondition="integratedMode,runtimeVersionv2.0" />
-                <add name="AXD-ISAPI-2.0" path="*.axd" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" responseBufferLimit="0" />
-                <add name="PageHandlerFactory-ISAPI-2.0" path="*.aspx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" responseBufferLimit="0" />
-                <add name="SimpleHandlerFactory-ISAPI-2.0" path="*.ashx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" responseBufferLimit="0" />
-                <add name="WebServiceHandlerFactory-ISAPI-2.0" path="*.asmx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-rem-ISAPI-2.0" path="*.rem" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-soap-ISAPI-2.0" path="*.soap" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness32" responseBufferLimit="0" />
-                <add name="svc-ISAPI-2.0-64" path="*.svc" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" />
-                <add name="AXD-ISAPI-2.0-64" path="*.axd" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" responseBufferLimit="0" />
-                <add name="PageHandlerFactory-ISAPI-2.0-64" path="*.aspx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" responseBufferLimit="0" />
-                <add name="SimpleHandlerFactory-ISAPI-2.0-64" path="*.ashx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" responseBufferLimit="0" />
-                <add name="WebServiceHandlerFactory-ISAPI-2.0-64" path="*.asmx" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-rem-ISAPI-2.0-64" path="*.rem" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" responseBufferLimit="0" />
-                <add name="HttpRemotingHandlerFactory-soap-ISAPI-2.0-64" path="*.soap" verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" responseBufferLimit="0" />
-                <add name="rules-64-ISAPI-2.0" path="*.rules" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" />
-                <add name="xoml-64-ISAPI-2.0" path="*.xoml" verb="*" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv2.0,bitness64" />
-                <add name="CGI-exe" path="*.exe" verb="*" modules="CgiModule" resourceType="File" requireAccess="Execute" allowPathInfo="true" />
-                <add name="SSINC-stm" path="*.stm" verb="GET,HEAD,POST" modules="ServerSideIncludeModule" resourceType="File" />
-                <add name="SSINC-shtm" path="*.shtm" verb="GET,HEAD,POST" modules="ServerSideIncludeModule" resourceType="File" />
-                <add name="SSINC-shtml" path="*.shtml" verb="GET,HEAD,POST" modules="ServerSideIncludeModule" resourceType="File" />
-                <add name="TRACEVerbHandler" path="*" verb="TRACE" modules="ProtocolSupportModule" requireAccess="None" />
-                <add name="OPTIONSVerbHandler" path="*" verb="OPTIONS" modules="ProtocolSupportModule" requireAccess="None" />
-                <add name="ExtensionlessUrlHandler-ISAPI-4.0_32bit" path="*." verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness32" responseBufferLimit="0" />
-                <add name="ExtensionlessUrlHandler-ISAPI-4.0_64bit" path="*." verb="GET,HEAD,POST,DEBUG" modules="IsapiModule" scriptProcessor="%windir%\Microsoft.NET\Framework64\v4.0.30319\aspnet_isapi.dll" preCondition="classicMode,runtimeVersionv4.0,bitness64" responseBufferLimit="0" />
-                <add name="ExtensionlessUrlHandler-Integrated-4.0" path="*." verb="GET,HEAD,POST,DEBUG" type="System.Web.Handlers.TransferRequestHandler" preCondition="integratedMode,runtimeVersionv4.0" responseBufferLimit="0" />
-                <add name="StaticFile" path="*" verb="*" modules="StaticFileModule,DefaultDocumentModule,DirectoryListingModule" resourceType="Either" requireAccess="Read" />
-            </handlers>
-        </system.webServer>
-    </location>
-</configuration>
-
---- END OF .\.vs\smart-life-companion\config\applicationhost.config ---
-
---- FILE: .\frontend\next.config.ts ---
-import type { NextConfig } from "next/dist/server/config-shared";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
-
---- END OF .\frontend\next.config.ts ---
-
---- FILE: .\frontend\app\dashboard\Profile\page.tsx ---
+--- FILE: .\backend\package.json ---
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "firebase": "^12.9.0",
+    "firebase-admin": "^13.6.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.2.1",
+    "multer": "^2.0.2",
+    "openai": "^6.22.0"
+  }
+}
+
+--- END OF .\backend\package.json ---
+
+--- FILE: .\frontend\README.md ---
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+--- END OF .\frontend\README.md ---
+
+--- FILE: .\frontend\app\register\page.tsx ---
 ﻿"use client";
 
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import type { Variants } from "framer-motion";
+import { registerWithEmail } from "@/lib/firebase";
 
-type Profile = { name: string; email: string; userId: string };
+export default function RegisterPage() {
+    const router = useRouter();
+    const { login } = useAuth();
 
-type Goals = {
-    weightTarget: string;
-    weeklySteps: number;
-    dailyCalories: number;
-    sleepTarget: number;
-    fitnessGoal: string;
-};
-
-type Notifications = {
-    dailyReminder: boolean;
-    weeklyReport: boolean;
-    recoveryAlerts: boolean;
-    goalAchievements: boolean;
-};
-
-type ActivityEntry = {
-    action: string;
-    time: string;
-    icon: string;
-};
-
-const DEFAULT_GOALS: Goals = {
-    weightTarget: "",
-    weeklySteps: 70000,
-    dailyCalories: 2200,
-    sleepTarget: 8,
-    fitnessGoal: "Lose fat",
-};
-
-const DEFAULT_NOTIFS: Notifications = {
-    dailyReminder: true,
-    weeklyReport: true,
-    recoveryAlerts: false,
-    goalAchievements: true,
-};
-
-const FITNESS_GOALS = ["Lose fat", "Gain muscle", "Maintain", "Improve endurance", "Increase flexibility"];
-
-const stagger = {
-    hidden: {},
-    show: {
-        transition: { staggerChildren: 0.08 }
-    }
-} satisfies Variants;
-
-const fadeUp = {
-    hidden: { opacity: 0, y: 20 },
-    show: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            duration: 0.45,
-            ease: "easeOut"
-        }
-    }
-} satisfies Variants;
-
-export default function ProfilePage() {
-    const { token, logout } = useAuth();
-    const base = process.env.NEXT_PUBLIC_API_URL;
-
-    const [profile, setProfile] = useState<Profile | null>(null);
     const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [confirm, setConfirm] = useState("");
     const [loading, setLoading] = useState(false);
-    const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
-    const [copied, setCopied] = useState(false);
+    const [error, setError] = useState("");
 
-    // Tabs
-    const [activeTab, setActiveTab] = useState<"account" | "goals" | "notifications" | "activity">("account");
-
-    // Goals
-    const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
-    const [goalSaved, setGoalSaved] = useState(false);
-
-    // Notifications
-    const [notifs, setNotifs] = useState<Notifications>(DEFAULT_NOTIFS);
-    const [notifSaved, setNotifSaved] = useState(false);
-
-    // Activity log (mock + localStorage)
-    const [activityLog, setActivityLog] = useState<ActivityEntry[]>([]);
-
-    useEffect(() => {
-        if (!token) return;
-        fetch(`${base}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-            .then((r) => (r.status === 401 ? (logout(), null) : r.json()))
-            .then((d) => { if (d) { setProfile(d); setName(d.name); } })
-            .catch(console.error);
-
-        // Load saved goals & notifs
-        const savedGoals = localStorage.getItem("smartlife-goals");
-        if (savedGoals) setGoals(JSON.parse(savedGoals));
-
-        const savedNotifs = localStorage.getItem("smartlife-notifs");
-        if (savedNotifs) setNotifs(JSON.parse(savedNotifs));
-
-        // Build activity log
-        const log: ActivityEntry[] = [
-            { action: "Logged in", time: new Date().toLocaleString(), icon: "🔑" },
-        ];
-        const lastSync = localStorage.getItem("smartlife-last-sync");
-        if (lastSync) log.push({ action: "Health data synced", time: lastSync, icon: "📱" });
-        const chatCount = (() => {
-            try { return JSON.parse(localStorage.getItem("smartlife-chat") || "[]").length; } catch { return 0; }
-        })();
-        if (chatCount > 0) log.push({ action: `${chatCount} AI coach messages`, time: "This session", icon: "🤖" });
-        const pins = (() => {
-            try { return JSON.parse(localStorage.getItem("smartlife-pins") || "[]").length; } catch { return 0; }
-        })();
-        if (pins > 0) log.push({ action: `${pins} location${pins > 1 ? "s" : ""} pinned on globe`, time: "Saved", icon: "📍" });
-        setActivityLog(log);
-    }, [token]);
-
-    async function handleUpdate() {
-        if (password && password !== confirm) {
-            setMsg({ text: "Passwords don't match.", ok: false });
-            return;
-        }
+    async function handleRegister(e: React.FormEvent) {
+        e.preventDefault();
+        setError("");
         setLoading(true);
-        setMsg(null);
+
         try {
-            const res = await fetch(`${base}/api/auth/update`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ name, password: password || undefined }),
-            });
-            const data = await res.json();
-            setMsg(res.ok ? { text: "Profile updated successfully!", ok: true } : { text: data.error || "Update failed", ok: false });
-            if (res.ok) { setPassword(""); setConfirm(""); }
-        } catch {
-            setMsg({ text: "Server error.", ok: false });
+            // 1️⃣ Firebase register
+            const data = await registerWithEmail(email, password);
+
+            // 2️⃣ Store backend JWT
+            login(data.token);
+
+            // 3️⃣ Redirect
+            router.replace("/dashboard");
+
+        } catch (err: any) {
+            setError(err.message || "Registration failed.");
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }
-
-    function saveGoals() {
-        localStorage.setItem("smartlife-goals", JSON.stringify(goals));
-        setGoalSaved(true);
-        setTimeout(() => setGoalSaved(false), 1800);
-    }
-
-    function saveNotifs() {
-        localStorage.setItem("smartlife-notifs", JSON.stringify(notifs));
-        setNotifSaved(true);
-        setTimeout(() => setNotifSaved(false), 1800);
-    }
-
-    function copyId() {
-        if (!profile) return;
-        navigator.clipboard.writeText(profile.userId);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    }
-
-    if (!profile)
-        return (
-            <div className="flex items-center justify-center h-64">
-                <motion.div className="w-12 h-12 border-2 border-[#c8ff00] border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
-            </div>
-        );
-
-    const initials = profile.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-
-    const TABS = [
-        { id: "account", label: "👤 Account" },
-        { id: "goals", label: "🎯 Goals" },
-        { id: "notifications", label: "🔔 Alerts" },
-        { id: "activity", label: "🕐 Activity" },
-    ] as const;
 
     return (
-        <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-7 max-w-3xl mx-auto px-2 sm:px-0">
+        <div className="min-h-screen flex items-center justify-center bg-black text-white px-6">
+            <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-md backdrop-blur-2xl bg-black/40 border border-white/20 rounded-3xl p-10"
+            >
+                <h1 className="text-4xl font-semibold mb-8 text-center">
+                    Create Account
+                </h1>
 
-            {/* ── HEADER ── */}
-            <motion.div variants={fadeUp}>
-                <p className="text-[#c8ff00] text-xs tracking-widest uppercase mb-2">Account</p>
-                <h1 className="text-3xl sm:text-5xl font-bold tracking-tight">Profile</h1>
-            </motion.div>
+                <form onSubmit={handleRegister} className="space-y-6">
 
-            {/* ── AVATAR HERO CARD ── */}
-            <motion.div variants={fadeUp} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                    <div className="relative">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#c8ff00] flex items-center justify-center text-black text-xl sm:text-2xl font-bold select-none">
-                            {initials}
+                    <input
+                        type="text"
+                        placeholder="Full Name"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full px-6 py-4 rounded-2xl bg-black/40 border border-white/20 outline-none"
+                    />
+
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-6 py-4 rounded-2xl bg-black/40 border border-white/20 outline-none"
+                    />
+
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-6 py-4 rounded-2xl bg-black/40 border border-white/20 outline-none"
+                    />
+
+                    {error && (
+                        <div className="text-red-400 text-sm">
+                            {error}
                         </div>
-                        <motion.div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#c8ff00] rounded-full border-2 border-black" animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 2, repeat: Infinity }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <h2 className="text-xl sm:text-2xl font-bold truncate">{profile.name}</h2>
-                        <p className="text-white/40 text-sm mt-0.5">{profile.email}</p>
-                        <div className="flex items-center gap-2 mt-2.5">
-                            <span className="text-[10px] px-2.5 py-1 rounded-lg bg-[#c8ff00]/10 border border-[#c8ff00]/20 text-[#c8ff00] font-medium">
-                                {goals.fitnessGoal}
-                            </span>
-                            <span className="text-[10px] px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/40">
-                                Smart Life Member
-                            </span>
-                        </div>
-                    </div>
-                    <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={logout}
-                        className="px-5 py-2.5 rounded-2xl border border-red-500/25 text-red-400/70 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/40 transition text-sm font-medium self-start sm:self-auto shrink-0"
-                    >
-                        Sign Out
-                    </motion.button>
-                </div>
-            </motion.div>
+                    )}
 
-            {/* ── TABS ── */}
-            <motion.div variants={fadeUp} className="flex flex-wrap gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
-                {TABS.map((tab) => (
                     <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"}`}
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-[#c8ff00] text-black py-4 rounded-2xl font-semibold disabled:opacity-50"
                     >
-                        {tab.label}
+                        {loading ? "Creating account..." : "Register"}
                     </button>
-                ))}
+
+                </form>
+
+                <div className="mt-6 text-center text-sm text-white/60">
+                    Already have an account?{" "}
+                    <span
+                        onClick={() => router.push("/login")}
+                        className="text-[#c8ff00] cursor-pointer"
+                    >
+                        Login
+                    </span>
+                </div>
+
             </motion.div>
-
-            {/* ══════════ ACCOUNT TAB ══════════ */}
-            <AnimatePresence mode="wait">
-                {activeTab === "account" && (
-                    <motion.div key="account" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
-
-                        {/* Edit form */}
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-5">
-                            <h3 className="text-xs text-white/40 uppercase tracking-widest">Edit Details</h3>
-
-                            <div>
-                                <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Display Name</label>
-                                <input
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="w-full px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/50 transition text-sm"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Email</label>
-                                <input value={profile.email} disabled className="w-full px-5 py-3 rounded-2xl bg-white/3 border border-white/5 text-white/30 text-sm cursor-not-allowed" />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">New Password</label>
-                                    <input type="password" placeholder="Leave blank to keep current" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/50 transition text-sm placeholder:text-white/20" />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Confirm Password</label>
-                                    <input type="password" placeholder="Repeat new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={`w-full px-5 py-3 rounded-2xl bg-white/5 border text-white outline-none focus:border-[#c8ff00]/50 transition text-sm placeholder:text-white/20 ${confirm && confirm !== password ? "border-red-500/50" : "border-white/10"}`} />
-                                </div>
-                            </div>
-
-                            {msg && <p className={`text-sm ${msg.ok ? "text-[#c8ff00]" : "text-red-400"}`}>{msg.text}</p>}
-
-                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={handleUpdate} disabled={loading} className="bg-[#c8ff00] text-black px-8 py-3 rounded-2xl font-bold text-sm disabled:opacity-50">
-                                {loading ? "Saving..." : "Save Changes"}
-                            </motion.button>
-                        </div>
-
-                        {/* Shortcut ID card */}
-                        <div className="backdrop-blur-2xl bg-white/3 border border-white/8 rounded-3xl p-5 sm:p-8">
-                            <h3 className="text-sm font-semibold text-white/60 mb-1">Apple Shortcut User ID</h3>
-                            <p className="text-white/30 text-sm mb-4">Use this ID in your Apple Shortcut to sync health data to your account.</p>
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                                <code className="flex-1 px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-[#c8ff00] text-sm font-mono break-all">{profile.userId}</code>
-                                <button onClick={copyId} className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition text-sm whitespace-nowrap">
-                                    {copied ? "✓ Copied" : "Copy"}
-                                </button>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* ══════════ GOALS TAB ══════════ */}
-                {activeTab === "goals" && (
-                    <motion.div key="goals" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-6">
-                            <div>
-                                <h3 className="text-base font-bold mb-1">Goal Settings</h3>
-                                <p className="text-white/40 text-sm">Set your targets — these are used by the AI Coach and dashboard insights.</p>
-                            </div>
-
-                            {/* Fitness Goal */}
-                            <div>
-                                <label className="text-xs text-white/40 uppercase tracking-widest mb-3 block">Primary Fitness Goal</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {FITNESS_GOALS.map((g) => (
-                                        <button
-                                            key={g}
-                                            onClick={() => setGoals((p) => ({ ...p, fitnessGoal: g }))}
-                                            className={`px-4 py-2 rounded-xl text-sm font-medium border transition ${goals.fitnessGoal === g ? "bg-[#c8ff00] text-black border-[#c8ff00]" : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:border-white/25"}`}
-                                        >
-                                            {g}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Numeric targets */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                {[
-                                    { key: "weeklySteps", label: "Weekly Steps Target", placeholder: "70000", unit: "steps", min: 10000, max: 200000, step: 5000 },
-                                    { key: "dailyCalories", label: "Daily Calorie Target", placeholder: "2200", unit: "kcal", min: 1200, max: 5000, step: 100 },
-                                    { key: "sleepTarget", label: "Sleep Target", placeholder: "8", unit: "hrs/night", min: 5, max: 12, step: 0.5 },
-                                    { key: "weightTarget", label: "Weight Target (optional)", placeholder: "e.g. 75", unit: "kg", min: 0, max: 300, step: 0.5 },
-                                ].map((field) => (
-                                    <div key={field.key}>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <label className="text-xs text-white/40 uppercase tracking-widest">{field.label}</label>
-                                            <span className="text-xs text-white/25">{field.unit}</span>
-                                        </div>
-                                        <input
-                                            type="number"
-                                            value={goals[field.key as keyof Goals]}
-                                            onChange={(e) => setGoals((p) => ({ ...p, [field.key]: field.key === "weightTarget" ? e.target.value : Number(e.target.value) }))}
-                                            placeholder={field.placeholder}
-                                            min={field.min}
-                                            max={field.max}
-                                            step={field.step}
-                                            className="w-full px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/50 transition text-sm placeholder:text-white/20"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Progress preview */}
-                            <div className="space-y-3 pt-2 border-t border-white/8">
-                                <p className="text-xs text-white/30 uppercase tracking-widest">Target Summary</p>
-                                {[
-                                    { label: "Steps / week", value: Number(goals.weeklySteps).toLocaleString(), color: "#c8ff00" },
-                                    { label: "Calories / day", value: Number(goals.dailyCalories).toLocaleString() + " kcal", color: "#FF8C00" },
-                                    { label: "Sleep / night", value: goals.sleepTarget + " hrs", color: "#00BFFF" },
-                                ].map((item) => (
-                                    <div key={item.label} className="flex items-center justify-between text-sm">
-                                        <span className="text-white/40">{item.label}</span>
-                                        <span className="font-bold font-mono" style={{ color: item.color }}>{item.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={saveGoals} className="bg-[#c8ff00] text-black px-8 py-3 rounded-2xl font-bold text-sm">
-                                {goalSaved ? "✓ Goals Saved!" : "Save Goals"}
-                            </motion.button>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* ══════════ NOTIFICATIONS TAB ══════════ */}
-                {activeTab === "notifications" && (
-                    <motion.div key="notifications" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-6">
-                            <div>
-                                <h3 className="text-base font-bold mb-1">Notification Preferences</h3>
-                                <p className="text-white/40 text-sm">Choose what alerts you want Smart Life to surface.</p>
-                            </div>
-
-                            <div className="space-y-1">
-                                {([
-                                    { key: "dailyReminder", label: "Daily Training Reminder", desc: "Get a nudge each morning to log your activity", icon: "⏰" },
-                                    { key: "weeklyReport", label: "Weekly Progress Report", desc: "Summary of your week every Sunday", icon: "📊" },
-                                    { key: "recoveryAlerts", label: "Recovery Alerts", desc: "Notified when your recovery score drops below 60", icon: "😴" },
-                                    { key: "goalAchievements", label: "Goal Achievements", desc: "Celebrate when you hit your daily or weekly targets", icon: "🏆" },
-                                ] as const).map((item, i) => (
-                                    <motion.div
-                                        key={item.key}
-                                        initial={{ opacity: 0, x: -10 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: i * 0.06 }}
-                                        className="flex items-center justify-between gap-4 py-4 border-b border-white/5 last:border-0"
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-xl mt-0.5">{item.icon}</span>
-                                            <div>
-                                                <p className="text-sm font-medium text-white/80">{item.label}</p>
-                                                <p className="text-xs text-white/30 mt-0.5">{item.desc}</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Toggle */}
-                                        <button
-                                            onClick={() => setNotifs((p) => ({ ...p, [item.key]: !p[item.key] }))}
-                                            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${notifs[item.key] ? "bg-[#c8ff00]" : "bg-white/10"}`}
-                                        >
-                                            <motion.div
-                                                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm"
-                                                animate={{ left: notifs[item.key] ? "calc(100% - 22px)" : "2px" }}
-                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                            />
-                                        </button>
-                                    </motion.div>
-                                ))}
-                            </div>
-
-                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }} onClick={saveNotifs} className="bg-[#c8ff00] text-black px-8 py-3 rounded-2xl font-bold text-sm">
-                                {notifSaved ? "✓ Preferences Saved!" : "Save Preferences"}
-                            </motion.button>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* ══════════ ACTIVITY LOG TAB ══════════ */}
-                {activeTab === "activity" && (
-                    <motion.div key="activity" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-5">
-                            <div>
-                                <h3 className="text-base font-bold mb-1">Account Activity</h3>
-                                <p className="text-white/40 text-sm">A summary of recent actions and data in your account.</p>
-                            </div>
-
-                            {activityLog.length === 0 ? (
-                                <div className="text-center py-12 text-white/30">
-                                    <p className="text-3xl mb-3">🕐</p>
-                                    <p className="text-sm">No activity recorded yet.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-0 divide-y divide-white/5">
-                                    {activityLog.map((entry, i) => (
-                                        <motion.div
-                                            key={i}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: i * 0.07 }}
-                                            className="flex items-center gap-4 py-4"
-                                        >
-                                            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-base shrink-0">
-                                                {entry.icon}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-white/80 truncate">{entry.action}</p>
-                                                <p className="text-xs text-white/25 mt-0.5">{entry.time}</p>
-                                            </div>
-                                            <div className="w-2 h-2 rounded-full bg-[#c8ff00]/40 shrink-0" />
-                                        </motion.div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Data summary */}
-                            <div className="pt-4 border-t border-white/8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {[
-                                    { label: "Chat Messages", value: (() => { try { return JSON.parse(localStorage.getItem("smartlife-chat") || "[]").length; } catch { return 0; } })(), icon: "💬" },
-                                    { label: "Pinned Cities", value: (() => { try { return JSON.parse(localStorage.getItem("smartlife-pins") || "[]").length; } catch { return 0; } })(), icon: "📍" },
-                                    { label: "Journal Entries", value: (() => { try { return JSON.parse(localStorage.getItem("smartlife-symptoms") || "[]").length; } catch { return 0; } })(), icon: "🩺" },
-                                    { label: "Goals Set", value: localStorage.getItem("smartlife-goals") ? 1 : 0, icon: "🎯" },
-                                ].map((stat) => (
-                                    <div key={stat.label} className="bg-white/4 border border-white/8 rounded-2xl p-3.5">
-                                        <span className="text-lg">{stat.icon}</span>
-                                        <p className="text-xl font-bold text-[#c8ff00] mt-1.5">{stat.value}</p>
-                                        <p className="text-[10px] text-white/30 uppercase tracking-widest mt-0.5">{stat.label}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
+        </div>
     );
 }
---- END OF .\frontend\app\dashboard\Profile\page.tsx ---
+--- END OF .\frontend\app\register\page.tsx ---
 
---- FILE: .\frontend\public\file.svg ---
-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
---- END OF .\frontend\public\file.svg ---
+--- FILE: .\frontend\public\next.svg ---
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+--- END OF .\frontend\public\next.svg ---
 

@@ -1,590 +1,387 @@
 TS PROJECT PART 20 of 20
 ==============================
---- FILE: .\frontend\.env.local ---
-NEXT_PUBLIC_API_URL=http://10.0.0.49:5000
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyAcVOlFMr75LK2vzsUVhF_gQkVxQdSUhSQ
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=smart-life-789fd.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=smart-life-789fd
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=smart-life-789fd.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=862342204037
-NEXT_PUBLIC_FIREBASE_APP_ID=1:862342204037:web:41fa992c3b7abbe14477ec
---- END OF .\frontend\.env.local ---
+--- FILE: .\frontend\next-env.d.ts ---
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/dev/types/routes.d.ts";
 
---- FILE: .\frontend\app\dashboard\Earth\page.tsx ---
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+--- END OF .\frontend\next-env.d.ts ---
+
+--- FILE: .\frontend\app\dashboard\plan\page.tsx ---
 ﻿"use client";
 
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
-import { Suspense, useRef, useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import * as THREE from "three";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { generatePlan } from "@/lib/api";
+import GlassSelect from "@/components/GlassSelect";
 
-/* ================= TYPES ================= */
+type Exercise = { name: string; sets: number; reps: number };
+type WeeklyPlan = { [day: string]: Exercise[] };
 
-type WeatherData = {
-    location: string;
-    temperature: number;
-    condition: string;
-    description: string;
-    humidity: number;
-    windSpeed: number;
-    lat: number;
-    lon: number;
-};
-
-type PinnedLocation = {
+type SavedPlan = {
     id: string;
-    name: string;
-    lat: number;
-    lon: number;
-    weather?: WeatherData;
+    label: string;
+    goal: string;
+    days: number;
+    mode: string;
+    plan: WeeklyPlan;
+    savedAt: string;
 };
 
-/* ================= AQI MOCK (frontend-only estimate) ================= */
-function estimateAQI(weather: WeatherData): { aqi: number; label: string; color: string } {
-    // Simple heuristic: humidity + wind affect perceived air quality
-    const base = 30 + weather.humidity * 0.3 - weather.windSpeed * 2;
-    const aqi = Math.max(10, Math.min(300, Math.round(base)));
-    if (aqi <= 50) return { aqi, label: "Good", color: "#c8ff00" };
-    if (aqi <= 100) return { aqi, label: "Moderate", color: "#FFB300" };
-    if (aqi <= 150) return { aqi, label: "Sensitive", color: "#FF6B00" };
-    return { aqi, label: "Unhealthy", color: "#ff4d6d" };
+const DAY_COLORS: Record<string, string> = {
+    Monday: "#c8ff00",
+    Tuesday: "#00BFFF",
+    Wednesday: "#ff4d6d",
+    Thursday: "#c8ff00",
+    Friday: "#00BFFF",
+    Saturday: "#ff4d6d",
+    Sunday: "#ffffff30",
+};
+
+// Rest day suggestions based on goal + day count
+function getRestDaySuggestion(goal: string, days: number): string {
+    if (days <= 3) return "With 3 days of training, you have plenty of recovery time. Consider active rest: walking or light stretching on off days.";
+    if (days === 4 && goal === "Lose fat") return "4-day split detected. Ideal: rest Wednesday and Sunday to allow lower body recovery.";
+    if (days === 5 && goal === "Gain muscle") return "5-day plan: ensure at least 1 full rest day. Avoid training the same muscle group on consecutive days.";
+    if (days === 6) return "High volume week! At least 1 complete rest day is essential. Watch for signs of overtraining: poor sleep, elevated resting HR.";
+    return "Balance intensity with recovery. At least 1–2 rest days per week keeps performance high and injuries low.";
 }
 
-/* ================= HELPERS ================= */
-
-function latLonToVec3(lat: number, lon: number, r: number) {
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lon + 180) * (Math.PI / 180);
-    return new THREE.Vector3(
-        -r * Math.sin(phi) * Math.cos(theta),
-        r * Math.cos(phi),
-        r * Math.sin(phi) * Math.sin(theta)
-    );
-}
-
-/* ================= GLOBE ================= */
-
-function Globe({ onClick }: { onClick: (lat: number, lon: number) => void }) {
-    const [earthTex, nightTex, cloudTex] = useLoader(THREE.TextureLoader, [
-        "/textures/earth.jpg",
-        "/textures/earth_lights.png",
-        "/textures/earth_clouds.png",
-    ]);
-
-    [earthTex, nightTex, cloudTex].forEach((t) => {
-        t.colorSpace = THREE.SRGBColorSpace;
-        t.anisotropy = 8;
-    });
-
-    const cloudRef = useRef<THREE.Mesh>(null!);
-
-    useFrame(() => {
-        if (cloudRef.current) cloudRef.current.rotation.y += 0.00025;
-    });
-
-    function handleClick(e: any) {
-        e.stopPropagation();
-        const pt = e.point.clone().normalize();
-        const lat = Math.asin(Math.max(-1, Math.min(1, pt.y))) * (180 / Math.PI);
-        let lon = Math.atan2(-pt.z, pt.x) * (180 / Math.PI);
-        lon = lon - 90;
-        if (lon < -180) lon += 360;
-        if (lon > 180) lon -= 360;
-        onClick(lat, lon);
-    }
-
-    return (
-        <>
-            <ambientLight intensity={0.2} />
-            <directionalLight position={[5, 2, 5]} intensity={2} />
-
-            <mesh onClick={handleClick}>
-                <sphereGeometry args={[2, 128, 128]} />
-                <meshPhongMaterial
-                    map={earthTex}
-                    emissiveMap={nightTex}
-                    emissive={new THREE.Color(0xffffff)}
-                    emissiveIntensity={0.8}
-                    shininess={12}
-                />
-            </mesh>
-
-            <mesh ref={cloudRef}>
-                <sphereGeometry args={[2.02, 128, 128]} />
-                <meshPhongMaterial map={cloudTex} transparent opacity={0.4} depthWrite={false} />
-            </mesh>
-        </>
-    );
-}
-
-/* ================= WEATHER ICON ================= */
-
-function WeatherIcon({ condition, size = "md" }: { condition: string; size?: "sm" | "md" | "lg" }) {
-    const c = condition?.toLowerCase() ?? "";
-    const icon =
-        c.includes("clear") || c.includes("sun") ? "☀" :
-            c.includes("cloud") ? "☁" :
-                c.includes("rain") || c.includes("drizzle") ? "⛆" :
-                    c.includes("snow") ? "❄" :
-                        c.includes("storm") || c.includes("thunder") ? "⚡" :
-                            c.includes("fog") || c.includes("mist") ? "◌" : "◈";
-
-    const sizeClass = size === "sm" ? "text-sm" : size === "lg" ? "text-3xl" : "text-xl";
-    return <span className={sizeClass}>{icon}</span>;
-}
-
-/* ================= STAT PILL ================= */
-
-function Stat({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex flex-col gap-0.5">
-            <span style={{ color: "rgba(255,255,255,0.32)", fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 700 }}>{label}</span>
-            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: "13px", fontFamily: "monospace", fontWeight: 600 }}>{value}</span>
-        </div>
-    );
-}
-
-/* ================= PAGE ================= */
-
-export default function EarthPage() {
-    const [weather, setWeather] = useState<WeatherData | null>(null);
+export default function PlanPage() {
+    const [goal, setGoal] = useState("Lose fat");
+    const [days, setDays] = useState(3);
+    const [mode, setMode] = useState<"smart" | "pro">("smart");
+    const [plan, setPlan] = useState<WeeklyPlan | null>(null);
     const [loading, setLoading] = useState(false);
-    const [pins, setPins] = useState<PinnedLocation[]>([]);
-    const [showPins, setShowPins] = useState(false);
-    const [showCompare, setShowCompare] = useState(false);
-    const [compareLoading, setCompareLoading] = useState(false);
-    const base = process.env.NEXT_PUBLIC_API_URL;
+    const [activeDay, setActiveDay] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<"plan" | "history">("plan");
 
-    // Load pinned locations from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem("smartlife-pins");
-        if (saved) setPins(JSON.parse(saved));
-    }, []);
+    // Saved plan history
+    const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
+        try { return JSON.parse(localStorage.getItem("smartlife-plans") || "[]"); } catch { return []; }
+    });
+    const [planSaved, setPlanSaved] = useState(false);
+    const [planLabel, setPlanLabel] = useState("");
+    const [showSaveModal, setShowSaveModal] = useState(false);
 
-    const fetchWeather = useCallback(async (lat: number, lon: number): Promise<WeatherData | null> => {
-        if (!base) return null;
-        try {
-            const res = await fetch(`${base}/api/weather?lat=${lat}&lon=${lon}`);
-            if (!res.ok) throw new Error("Weather fetch failed");
-            return await res.json();
-        } catch (err) {
-            console.error("Weather error:", err);
-            return null;
-        }
-    }, [base]);
+    // Drag-to-reorder state per day
+    const [dayExercises, setDayExercises] = useState<Record<string, Exercise[]>>({});
 
-    async function handleGlobeClick(lat: number, lon: number) {
+    async function handleGenerate() {
         setLoading(true);
-        const data = await fetchWeather(lat, lon);
-        if (data) setWeather(data);
+        setPlan(null);
+        try {
+            const res = await generatePlan({ mode, goal, days, bmi: 24 });
+            setPlan(res.plan);
+            // Init reorderable exercises
+            const init: Record<string, Exercise[]> = {};
+            Object.keys(res.plan).forEach((d) => { init[d] = [...res.plan[d]]; });
+            setDayExercises(init);
+            setActiveDay(Object.keys(res.plan)[0] || null);
+            setActiveTab("plan");
+        } catch {
+            console.error("Plan failed");
+        }
         setLoading(false);
     }
 
-    function pinLocation() {
-        if (!weather) return;
-        const newPin: PinnedLocation = {
+    function savePlan() {
+        if (!plan) return;
+        const saved: SavedPlan = {
             id: Date.now().toString(),
-            name: weather.location,
-            lat: weather.lat,
-            lon: weather.lon,
-            weather,
+            label: planLabel.trim() || `${goal} – ${days}d plan`,
+            goal,
+            days,
+            mode,
+            plan: dayExercises,
+            savedAt: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         };
-        const updated = [newPin, ...pins.filter((p) => p.name !== weather.location)].slice(0, 6);
-        setPins(updated);
-        localStorage.setItem("smartlife-pins", JSON.stringify(updated));
+        const updated = [saved, ...savedPlans].slice(0, 10);
+        setSavedPlans(updated);
+        localStorage.setItem("smartlife-plans", JSON.stringify(updated));
+        setPlanSaved(true);
+        setShowSaveModal(false);
+        setPlanLabel("");
+        setTimeout(() => setPlanSaved(false), 2000);
     }
 
-    function removePin(id: string) {
-        const updated = pins.filter((p) => p.id !== id);
-        setPins(updated);
-        localStorage.setItem("smartlife-pins", JSON.stringify(updated));
+    function loadSavedPlan(saved: SavedPlan) {
+        setPlan(saved.plan);
+        setDayExercises(saved.plan);
+        setGoal(saved.goal);
+        setDays(saved.days);
+        setMode(saved.mode as "smart" | "pro");
+        setActiveDay(Object.keys(saved.plan)[0] || null);
+        setActiveTab("plan");
     }
 
-    async function refreshCompare() {
-        if (pins.length === 0) return;
-        setCompareLoading(true);
-        const updated = await Promise.all(
-            pins.map(async (pin) => {
-                const w = await fetchWeather(pin.lat, pin.lon);
-                return { ...pin, weather: w ?? pin.weather };
-            })
-        );
-        setPins(updated);
-        localStorage.setItem("smartlife-pins", JSON.stringify(updated));
-        setCompareLoading(false);
+    function deleteSavedPlan(id: string) {
+        const updated = savedPlans.filter((p) => p.id !== id);
+        setSavedPlans(updated);
+        localStorage.setItem("smartlife-plans", JSON.stringify(updated));
     }
 
-    const aqi = weather ? estimateAQI(weather) : null;
-    const isPinned = weather ? pins.some((p) => p.name === weather.location) : false;
+    const restSuggestion = getRestDaySuggestion(goal, days);
+    const currentExercises = activeDay ? (dayExercises[activeDay] ?? plan?.[activeDay] ?? []) : [];
 
     return (
-        <div className="relative w-full h-[calc(100vh-56px)]" style={{ background: "#000005" }}>
+        <div className="space-y-8 sm:space-y-10">
 
-            {/* Vignette */}
-            <div className="pointer-events-none absolute inset-0 z-10" style={{ background: "radial-gradient(ellipse at center, transparent 55%, rgba(0,0,5,0.7) 100%)" }} />
+            {/* ── HEADER ── */}
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+                <p className="text-[#c8ff00] text-xs tracking-widest uppercase mb-2">AI Training System</p>
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Training Plan</h1>
+            </motion.div>
 
-            {/* Top-left hint */}
-            <div className="absolute top-5 left-5 z-20 pointer-events-none" style={{ userSelect: "none" }}>
-                <p style={{ fontSize: "9px", letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", fontWeight: 700, fontFamily: "monospace" }}>
-                    Click anywhere on the globe
-                </p>
-            </div>
+            {/* ── CONFIG CARD ── */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8">
+                <h2 className="text-xs sm:text-sm text-white/50 uppercase tracking-widest mb-6">Configure Plan</h2>
 
-            {/* ── NEW: Top-right control bar ── */}
-            <div className="absolute top-5 right-5 z-20 flex items-center gap-2">
-                {pins.length > 0 && (
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => { setShowCompare(true); refreshCompare(); }}
-                        style={{
-                            background: "rgba(4,4,12,0.82)",
-                            backdropFilter: "blur(20px)",
-                            border: "1px solid rgba(255,255,255,0.12)",
-                            borderRadius: "12px",
-                            padding: "8px 14px",
-                            fontSize: "11px",
-                            color: "rgba(255,255,255,0.6)",
-                            cursor: "pointer",
-                            letterSpacing: "0.05em",
-                        }}
-                    >
-                        📊 Compare ({pins.length})
-                    </motion.button>
-                )}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowPins(true)}
-                    style={{
-                        background: "rgba(4,4,12,0.82)",
-                        backdropFilter: "blur(20px)",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: "12px",
-                        padding: "8px 14px",
-                        fontSize: "11px",
-                        color: "rgba(255,255,255,0.6)",
-                        cursor: "pointer",
-                        letterSpacing: "0.05em",
-                    }}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    <GlassSelect label="Goal" value={goal} onChange={setGoal} options={[
+                        { label: "Lose fat", value: "Lose fat" },
+                        { label: "Gain muscle", value: "Gain muscle" },
+                        { label: "Maintain", value: "Maintain" },
+                    ]} />
+                    <GlassSelect label="Days / Week" value={days} onChange={(v) => setDays(Number(v))} options={[3, 4, 5, 6].map((n) => ({ label: `${n} days`, value: n }))} />
+                    <GlassSelect label="Mode" value={mode} onChange={(v) => setMode(v as any)} options={[
+                        { label: "⚡ Smart", value: "smart" },
+                        { label: "🤖 Pro AI", value: "pro" },
+                    ]} />
+                </div>
+
+                {/* ── NEW: Rest Day Suggestion ── */}
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-blue-500/8 border border-blue-400/15 mb-6"
                 >
-                    📍 Pins {pins.length > 0 ? `(${pins.length})` : ""}
-                </motion.button>
-            </div>
+                    <span className="text-lg mt-0.5">😴</span>
+                    <div>
+                        <p className="text-[10px] text-blue-300/60 uppercase tracking-widest mb-1">Recovery Tip</p>
+                        <p className="text-sm text-white/50 leading-relaxed">{restSuggestion}</p>
+                    </div>
+                </motion.div>
 
-            {/* Canvas */}
-            <Canvas camera={{ position: [0, 0, 6], fov: 45 }} className="w-full h-full">
-                <Suspense fallback={null}>
-                    <Stars radius={80} depth={50} count={5000} factor={4} saturation={0} fade />
-                    <Globe onClick={handleGlobeClick} />
-                    <OrbitControls enableZoom enablePan={false} />
-                </Suspense>
-            </Canvas>
-
-            {/* Loading pulse */}
-            <AnimatePresence>
-                {loading && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleGenerate}
+                        disabled={loading}
+                        className="bg-[#c8ff00] text-black px-8 sm:px-10 py-3 sm:py-4 rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-3"
                     >
-                        <motion.div
-                            animate={{ scale: [1, 1.15, 1], opacity: [0.4, 0.8, 0.4] }}
-                            transition={{ duration: 1.4, repeat: Infinity }}
-                            style={{ width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(200,255,0,0.6)" }}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        {loading ? (
+                            <>
+                                <motion.div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity }} />
+                                Generating...
+                            </>
+                        ) : "Generate Plan"}
+                    </motion.button>
 
-            {/* ── WEATHER CARD (enhanced with AQI + pin button) ── */}
+                    {mode === "pro" && <span className="text-xs text-white/40">Pro mode uses GPT-4o for a personalized plan</span>}
+                    {planSaved && <span className="text-xs text-[#c8ff00]">✓ Plan saved to history!</span>}
+                </div>
+            </motion.div>
+
+            {/* ── PLAN OUTPUT ── */}
             <AnimatePresence>
-                {weather && !loading && (
-                    <motion.div
-                        key={weather.location}
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 8 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="absolute z-20"
-                        style={{
-                            bottom: "clamp(16px, 4vw, 40px)",
-                            left: "clamp(12px, 3vw, 24px)",
-                            width: "clamp(260px, 30vw, 360px)",
-                        }}
-                    >
-                        <div style={{
-                            background: "rgba(4,4,12,0.88)",
-                            backdropFilter: "blur(24px) saturate(1.5)",
-                            border: "1px solid rgba(255,255,255,0.09)",
-                            borderRadius: "20px",
-                            padding: "20px 24px 22px",
-                            boxShadow: "0 24px 64px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)",
-                        }}>
-                            {/* Location + pin button */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <p style={{ fontSize: "9px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 4, fontFamily: "monospace" }}>
-                                        Current Location
-                                    </p>
-                                    <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
-                                        {weather.location}
-                                    </h2>
-                                </div>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <WeatherIcon condition={weather.condition} size="lg" />
-                                    <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={pinLocation}
-                                        title={isPinned ? "Already pinned" : "Pin this location"}
-                                        style={{
-                                            background: isPinned ? "rgba(200,255,0,0.15)" : "rgba(255,255,255,0.05)",
-                                            border: `1px solid ${isPinned ? "rgba(200,255,0,0.3)" : "rgba(255,255,255,0.12)"}`,
-                                            borderRadius: "10px",
-                                            padding: "6px 10px",
-                                            fontSize: "14px",
-                                            cursor: "pointer",
-                                            color: isPinned ? "#c8ff00" : "rgba(255,255,255,0.4)",
-                                        }}
+                {plan && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+
+                        {/* Tabs: Plan / History */}
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
+                                {([
+                                    { id: "plan", label: "📋 This Plan" },
+                                    { id: "history", label: `🗂 History ${savedPlans.length > 0 ? `(${savedPlans.length})` : ""}` },
+                                ] as const).map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"}`}
                                     >
-                                        {isPinned ? "📍" : "📌"}
-                                    </motion.button>
-                                </div>
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
 
-                            {/* Temperature */}
-                            <div className="flex items-end gap-2 mb-1">
-                                <span style={{ fontSize: "52px", fontWeight: 900, letterSpacing: "-0.04em", lineHeight: 1, color: "#fff", fontFamily: "monospace" }}>
-                                    {weather.temperature}
-                                </span>
-                                <span style={{ fontSize: "22px", fontWeight: 700, color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>°C</span>
-                            </div>
-
-                            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", marginBottom: 18, textTransform: "capitalize", letterSpacing: "0.02em" }}>
-                                {weather.description}
-                            </p>
-
-                            <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", marginBottom: 16 }} />
-
-                            <div className="flex gap-5 flex-wrap mb-4">
-                                <Stat label="Humidity" value={`${weather.humidity}%`} />
-                                <Stat label="Wind" value={`${weather.windSpeed} m/s`} />
-                                <Stat label="Coords" value={`${weather.lat.toFixed(1)}°, ${weather.lon.toFixed(1)}°`} />
-                            </div>
-
-                            {/* ── NEW: AQI Indicator ── */}
-                            {aqi && (
-                                <>
-                                    <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", marginBottom: 14 }} />
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p style={{ fontSize: "9px", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", fontWeight: 700, marginBottom: 4 }}>
-                                                Air Quality Index
-                                            </p>
-                                            <div className="flex items-center gap-2">
-                                                <span style={{ fontSize: "20px", fontWeight: 800, color: aqi.color, fontFamily: "monospace" }}>{aqi.aqi}</span>
-                                                <span style={{ fontSize: "12px", color: aqi.color, fontWeight: 600 }}>{aqi.label}</span>
-                                            </div>
-                                        </div>
-                                        {/* AQI mini bar */}
-                                        <div style={{ width: 80, height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 4, overflow: "hidden" }}>
-                                            <motion.div
-                                                style={{ height: "100%", background: aqi.color, borderRadius: 4 }}
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${Math.min((aqi.aqi / 300) * 100, 100)}%` }}
-                                                transition={{ duration: 1 }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.2)", marginTop: 6 }}>
-                                        * Estimated from humidity & wind data
-                                    </p>
-                                </>
+                            {/* Save button */}
+                            {activeTab === "plan" && (
+                                <motion.button
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => setShowSaveModal(true)}
+                                    className="text-sm px-4 py-2 rounded-xl border border-white/15 text-white/50 hover:text-white hover:border-white/30 transition"
+                                >
+                                    💾 Save Plan
+                                </motion.button>
                             )}
                         </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
-            {/* ── NEW: Pinned Locations Panel ── */}
-            <AnimatePresence>
-                {showPins && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-30 flex items-center justify-center p-4"
-                        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
-                        onClick={(e) => e.target === e.currentTarget && setShowPins(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.93, y: 16 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.93, y: 16 }}
-                            style={{
-                                background: "rgba(6,6,18,0.95)",
-                                border: "1px solid rgba(255,255,255,0.10)",
-                                borderRadius: "20px",
-                                padding: "24px",
-                                width: "100%",
-                                maxWidth: "420px",
-                                maxHeight: "80vh",
-                                overflowY: "auto",
-                            }}
-                        >
-                            <div className="flex items-center justify-between mb-5">
-                                <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>Pinned Locations</h3>
-                                <button onClick={() => setShowPins(false)} style={{ color: "rgba(255,255,255,0.3)", fontSize: "18px", cursor: "pointer", background: "none", border: "none" }}>✕</button>
-                            </div>
-
-                            {pins.length === 0 ? (
-                                <div className="text-center py-10">
-                                    <p style={{ fontSize: "32px", marginBottom: 12 }}>📌</p>
-                                    <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>
-                                        Click on the globe to view weather, then pin locations to save them here.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {pins.map((pin) => (
-                                        <motion.div
-                                            key={pin.id}
-                                            whileHover={{ scale: 1.01 }}
-                                            onClick={() => { if (pin.weather) setWeather(pin.weather); setShowPins(false); }}
-                                            style={{
-                                                background: "rgba(255,255,255,0.04)",
-                                                border: "1px solid rgba(255,255,255,0.08)",
-                                                borderRadius: "14px",
-                                                padding: "14px 16px",
-                                                cursor: "pointer",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "12px",
-                                            }}
+                        {/* ── CURRENT PLAN VIEW ── */}
+                        {activeTab === "plan" && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                                {/* Day Tabs */}
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.keys(plan).map((day) => (
+                                        <button
+                                            key={day}
+                                            onClick={() => setActiveDay(day)}
+                                            className={`px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${activeDay === day ? "text-black" : "text-white/40 hover:text-white bg-white/5"}`}
+                                            style={activeDay === day ? { background: DAY_COLORS[day] || "#c8ff00" } : {}}
                                         >
-                                            {pin.weather && <WeatherIcon condition={pin.weather.condition} size="md" />}
-                                            <div className="flex-1 min-w-0">
-                                                <p style={{ fontSize: "14px", fontWeight: 600, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{pin.name}</p>
-                                                {pin.weather && (
-                                                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }}>
-                                                        {pin.weather.temperature}°C · {pin.weather.condition}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); removePin(pin.id); }}
-                                                style={{ color: "rgba(255,255,255,0.2)", fontSize: "14px", cursor: "pointer", background: "none", border: "none", padding: "4px 8px" }}
-                                            >
-                                                ×
-                                            </button>
-                                        </motion.div>
+                                            {day}
+                                            {plan[day].length === 0 && <span className="ml-1.5 text-[10px] opacity-60">REST</span>}
+                                        </button>
                                     ))}
                                 </div>
-                            )}
-                        </motion.div>
+
+                                {/* Active Day */}
+                                {activeDay && (
+                                    <motion.div key={activeDay} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="w-2 h-8 rounded-full" style={{ background: DAY_COLORS[activeDay] || "#c8ff00" }} />
+                                            <h2 className="text-lg sm:text-xl font-bold">{activeDay}</h2>
+                                            <span className="text-xs text-white/30 ml-auto">
+                                                {currentExercises.length > 0 ? `${currentExercises.length} exercises` : "Rest Day"}
+                                            </span>
+                                            {currentExercises.length > 1 && (
+                                                <span className="text-[10px] text-white/20 hidden sm:block">drag to reorder</span>
+                                            )}
+                                        </div>
+
+                                        {currentExercises.length === 0 ? (
+                                            <div className="flex items-center gap-3 py-4">
+                                                <span className="text-2xl">😴</span>
+                                                <p className="text-white/40 text-sm">Rest day — focus on recovery, mobility, and nutrition.</p>
+                                            </div>
+                                        ) : (
+                                            // ── NEW: Drag-to-reorder exercises ──
+                                            <Reorder.Group
+                                                axis="y"
+                                                values={currentExercises}
+                                                onReorder={(newOrder) => {
+                                                    setDayExercises((prev) => ({ ...prev, [activeDay]: newOrder }));
+                                                }}
+                                                className="space-y-2"
+                                            >
+                                                {currentExercises.map((ex, i) => (
+                                                    <Reorder.Item
+                                                        key={ex.name + i}
+                                                        value={ex}
+                                                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 px-4 rounded-2xl bg-white/3 border border-white/6 hover:bg-white/5 hover:border-white/10 transition-colors cursor-grab active:cursor-grabbing"
+                                                        whileDrag={{ scale: 1.02, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="flex flex-col gap-0.5 opacity-25 hover:opacity-50 transition shrink-0">
+                                                                <div className="w-4 h-0.5 bg-white rounded" />
+                                                                <div className="w-4 h-0.5 bg-white rounded" />
+                                                                <div className="w-4 h-0.5 bg-white rounded" />
+                                                            </div>
+                                                            <span className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs text-white/40 font-mono shrink-0">
+                                                                {String(i + 1).padStart(2, "0")}
+                                                            </span>
+                                                            <span className="font-medium text-sm sm:text-base">{ex.name}</span>
+                                                        </div>
+                                                        <div className="ml-14 sm:ml-0">
+                                                            <span className="text-sm px-3 py-1.5 rounded-lg bg-white/5 text-white/60 font-mono">
+                                                                {ex.sets} × {ex.reps}
+                                                            </span>
+                                                        </div>
+                                                    </Reorder.Item>
+                                                ))}
+                                            </Reorder.Group>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </motion.div>
+                        )}
+
+                        {/* ── NEW: HISTORY TAB ── */}
+                        {activeTab === "history" && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+                                {savedPlans.length === 0 ? (
+                                    <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-10 text-center">
+                                        <p className="text-3xl mb-3">🗂</p>
+                                        <p className="text-white/30 text-sm">No saved plans yet.</p>
+                                        <p className="text-white/20 text-xs mt-1">Generate a plan and hit "Save Plan" to keep it here.</p>
+                                    </div>
+                                ) : (
+                                    savedPlans.map((saved, i) => (
+                                        <motion.div
+                                            key={saved.id}
+                                            initial={{ opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.05 }}
+                                            className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                                        >
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-sm truncate">{saved.label}</p>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-lg bg-[#c8ff00]/10 border border-[#c8ff00]/20 text-[#c8ff00]">{saved.goal}</span>
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-white/40">{saved.days} days/week</span>
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-white/40">{saved.mode === "pro" ? "🤖 Pro AI" : "⚡ Smart"}</span>
+                                                    <span className="text-[10px] text-white/20">{saved.savedAt}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <motion.button
+                                                    whileHover={{ scale: 1.04 }}
+                                                    whileTap={{ scale: 0.96 }}
+                                                    onClick={() => loadSavedPlan(saved)}
+                                                    className="px-4 py-2 rounded-xl bg-[#c8ff00] text-black text-xs font-bold"
+                                                >
+                                                    Load
+                                                </motion.button>
+                                                <button onClick={() => deleteSavedPlan(saved.id)} className="px-3 py-2 rounded-xl border border-white/10 text-white/25 hover:text-red-400 hover:border-red-400/30 transition text-xs">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                )}
+                            </motion.div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* ── NEW: Compare Panel ── */}
+            {/* ── SAVE PLAN MODAL ── */}
             <AnimatePresence>
-                {showCompare && (
+                {showSaveModal && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-30 flex items-center justify-center p-4"
-                        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)" }}
-                        onClick={(e) => e.target === e.currentTarget && setShowCompare(false)}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        onClick={(e) => e.target === e.currentTarget && setShowSaveModal(false)}
                     >
                         <motion.div
                             initial={{ scale: 0.93, y: 16 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.93, y: 16 }}
-                            style={{
-                                background: "rgba(6,6,18,0.95)",
-                                border: "1px solid rgba(255,255,255,0.10)",
-                                borderRadius: "20px",
-                                padding: "24px",
-                                width: "100%",
-                                maxWidth: "600px",
-                                maxHeight: "85vh",
-                                overflowY: "auto",
-                            }}
+                            className="w-full max-w-sm bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 space-y-5"
                         >
-                            <div className="flex items-center justify-between mb-5">
-                                <div>
-                                    <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>Compare Locations</h3>
-                                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: 2 }}>Live weather across your pinned cities</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {compareLoading && (
-                                        <motion.div
-                                            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-                                            animate={{ rotate: 360 }}
-                                            transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-                                        />
-                                    )}
-                                    <button onClick={() => setShowCompare(false)} style={{ color: "rgba(255,255,255,0.3)", fontSize: "18px", cursor: "pointer", background: "none", border: "none" }}>✕</button>
-                                </div>
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold">Save This Plan</h3>
+                                <button onClick={() => setShowSaveModal(false)} className="text-white/30 hover:text-white">✕</button>
                             </div>
-
-                            {/* Comparison grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {pins.filter((p) => p.weather).map((pin) => {
-                                    const pinAqi = pin.weather ? estimateAQI(pin.weather) : null;
-                                    return (
-                                        <div
-                                            key={pin.id}
-                                            style={{
-                                                background: "rgba(255,255,255,0.04)",
-                                                border: "1px solid rgba(255,255,255,0.08)",
-                                                borderRadius: "16px",
-                                                padding: "16px",
-                                            }}
-                                        >
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <p style={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>{pin.name}</p>
-                                                    <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)", marginTop: 2, textTransform: "capitalize" }}>
-                                                        {pin.weather?.description}
-                                                    </p>
-                                                </div>
-                                                <WeatherIcon condition={pin.weather?.condition ?? ""} size="md" />
-                                            </div>
-
-                                            <p style={{ fontSize: "32px", fontWeight: 900, color: "#fff", fontFamily: "monospace", letterSpacing: "-0.03em", lineHeight: 1, marginBottom: 10 }}>
-                                                {pin.weather?.temperature}°
-                                            </p>
-
-                                            <div style={{ height: "1px", background: "rgba(255,255,255,0.06)", marginBottom: 10 }} />
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <Stat label="Humidity" value={`${pin.weather?.humidity}%`} />
-                                                <Stat label="Wind" value={`${pin.weather?.windSpeed} m/s`} />
-                                            </div>
-
-                                            {pinAqi && (
-                                                <div className="flex items-center gap-2 mt-3">
-                                                    <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.12em" }}>AQI</span>
-                                                    <span style={{ fontSize: "12px", fontWeight: 700, color: pinAqi.color }}>{pinAqi.aqi}</span>
-                                                    <span style={{ fontSize: "10px", color: pinAqi.color }}>{pinAqi.label}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                            <div>
+                                <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Plan Name (optional)</label>
+                                <input
+                                    value={planLabel}
+                                    onChange={(e) => setPlanLabel(e.target.value)}
+                                    placeholder={`${goal} – ${days}d plan`}
+                                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition placeholder:text-white/20"
+                                />
                             </div>
-
-                            {pins.length < 2 && (
-                                <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)", textAlign: "center", marginTop: 16 }}>
-                                    Pin more locations on the globe to compare them side by side.
-                                </p>
-                            )}
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={savePlan} className="w-full py-3 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm">
+                                Save to History
+                            </motion.button>
                         </motion.div>
                     </motion.div>
                 )}
@@ -592,82 +389,171 @@ export default function EarthPage() {
         </div>
     );
 }
---- END OF .\frontend\app\dashboard\Earth\page.tsx ---
+--- END OF .\frontend\app\dashboard\plan\page.tsx ---
 
---- FILE: .\frontend\components\weather\RainScene.tsx ---
-﻿"use client";
+--- FILE: .\frontend\lib\firebase.ts ---
+﻿// ============================================================
+// frontend/lib/firebase.ts
+//
+// Handles:
+// - Google Login
+// - Email/Password Register
+// - Email/Password Login
+// - Forgot Password
+//
+// Firebase handles authentication.
+// Backend verifies ID token and returns JWT.
+// ============================================================
 
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { useRef, useMemo } from "react";
-import * as THREE from "three";
+import { initializeApp, getApps } from "firebase/app";
+import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendPasswordResetEmail,
+    signOut,
+    type UserCredential,
+} from "firebase/auth";
 
-function RainParticles() {
-    const pointsRef = useRef<THREE.Points>(null!);
-    const texture = useLoader(THREE.TextureLoader, "/textures/raindrop.png");
+// ─────────────────────────────────────────────
+// Firebase Config (from .env.local)
+// ─────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
 
-    const count = 7000;
+// Prevent duplicate initialization
+const app =
+    getApps().length === 0
+        ? initializeApp(firebaseConfig)
+        : getApps()[0];
 
-    const positions = useMemo(() => {
-        const arr = new Float32Array(count * 3);
+export const firebaseAuth = getAuth(app);
 
-        for (let i = 0; i < count; i++) {
-            arr[i * 3] = (Math.random() - 0.5) * 80;
-            arr[i * 3 + 1] = Math.random() * 60;
-            arr[i * 3 + 2] = (Math.random() - 0.5) * 80;
+// ─────────────────────────────────────────────
+// Google Provider
+// ─────────────────────────────────────────────
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+    prompt: "select_account",
+});
+
+// ============================================================
+// GOOGLE LOGIN
+// ============================================================
+export async function signInWithGoogle() {
+    let result: UserCredential;
+
+    try {
+        result = await signInWithPopup(firebaseAuth, googleProvider);
+    } catch (err: any) {
+        if (err.code === "auth/popup-closed-by-user") {
+            throw new Error("Sign-in cancelled.");
         }
-
-        return arr;
-    }, []);
-
-    useFrame(() => {
-        const geometry = pointsRef.current.geometry;
-        const attr = geometry.attributes.position;
-
-        for (let i = 0; i < count; i++) {
-            attr.array[i * 3 + 1] -= 0.7;
-
-            if (attr.array[i * 3 + 1] < -30) {
-                attr.array[i * 3 + 1] = 30;
-            }
+        if (err.code === "auth/popup-blocked") {
+            throw new Error("Popup blocked. Allow popups for this site.");
         }
+        throw new Error(err.message || "Google sign-in failed.");
+    }
 
-        attr.needsUpdate = true;
-    });
+    const idToken = await result.user.getIdToken();
 
-    return (
-        <points ref={pointsRef}>
-            <bufferGeometry>
-                <bufferAttribute
-                    attach="attributes-position"
-                    count={positions.length / 3}
-                    array={positions}
-                    itemSize={3}
-                />
-            </bufferGeometry>
-
-            <pointsMaterial
-                map={texture}
-                alphaMap={texture}
-                size={0.07}          // 👈 smaller droplets
-                transparent
-                depthWrite={false}
-                opacity={0.55}
-                color="#ffffff"
-                sizeAttenuation      // important for depth realism
-            />
-
-        </points>
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        }
     );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error || "Backend authentication failed.");
+    }
+
+    await signOut(firebaseAuth);
+
+    return data; // { token, userId }
 }
 
-export default function RainScene() {
-    return (
-        <Canvas camera={{ position: [0, 0, 20], fov: 75 }}>
-            <fog attach="fog" args={["#000000", 10, 100]} />
-            <RainParticles />
-        </Canvas>
+// ============================================================
+// EMAIL REGISTER
+// ============================================================
+export async function registerWithEmail(email: string, password: string) {
+    const result = await createUserWithEmailAndPassword(
+        firebaseAuth,
+        email,
+        password
     );
+
+    const idToken = await result.user.getIdToken();
+
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error || "Registration failed.");
+    }
+
+    await signOut(firebaseAuth);
+
+    return data;
 }
 
---- END OF .\frontend\components\weather\RainScene.tsx ---
+// ============================================================
+// EMAIL LOGIN
+// ============================================================
+export async function loginWithEmail(email: string, password: string) {
+    const result = await signInWithEmailAndPassword(
+        firebaseAuth,
+        email,
+        password
+    );
+
+    const idToken = await result.user.getIdToken();
+
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.error || "Login failed.");
+    }
+
+    await signOut(firebaseAuth);
+
+    return data;
+}
+
+// ============================================================
+// FORGOT PASSWORD
+// ============================================================
+export async function forgotPassword(email: string) {
+    await sendPasswordResetEmail(firebaseAuth, email);
+}
+--- END OF .\frontend\lib\firebase.ts ---
 

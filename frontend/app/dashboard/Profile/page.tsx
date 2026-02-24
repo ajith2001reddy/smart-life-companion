@@ -80,11 +80,27 @@ export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState<"account" | "goals" | "notifications" | "activity">("account");
 
     // Goals
-    const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
+    const [goals, setGoals] = useState<Goals>(() => {
+        if (typeof window === "undefined") return DEFAULT_GOALS;
+        try {
+            const saved = localStorage.getItem("smartlife-goals");
+            return saved ? JSON.parse(saved) : DEFAULT_GOALS;
+        } catch {
+            return DEFAULT_GOALS;
+        }
+    });
     const [goalSaved, setGoalSaved] = useState(false);
 
     // Notifications
-    const [notifs, setNotifs] = useState<Notifications>(DEFAULT_NOTIFS);
+    const [notifs, setNotifs] = useState<Notifications>(() => {
+        if (typeof window === "undefined") return DEFAULT_NOTIFS;
+        try {
+            const saved = localStorage.getItem("smartlife-notifs");
+            return saved ? JSON.parse(saved) : DEFAULT_NOTIFS;
+        } catch {
+            return DEFAULT_NOTIFS;
+        }
+    });
     const [notifSaved, setNotifSaved] = useState(false);
 
     // Activity log (mock + localStorage)
@@ -98,11 +114,7 @@ export default function ProfilePage() {
             .catch(console.error);
 
         // Load saved goals & notifs
-        const savedGoals = localStorage.getItem("smartlife-goals");
-        if (savedGoals) setGoals(JSON.parse(savedGoals));
-
-        const savedNotifs = localStorage.getItem("smartlife-notifs");
-        if (savedNotifs) setNotifs(JSON.parse(savedNotifs));
+       
 
         // Build activity log
         const log: ActivityEntry[] = [
@@ -169,7 +181,15 @@ export default function ProfilePage() {
             </div>
         );
 
-    const initials = profile.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+    const initials =
+        profile?.name
+            ? profile.name
+                .split(" ")
+                .map((w) => w[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)
+            : "U";
 
     const TABS = [
         { id: "account", label: "👤 Account" },

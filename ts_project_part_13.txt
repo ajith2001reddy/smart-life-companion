@@ -1,202 +1,462 @@
 TS PROJECT PART 13 of 20
 ==============================
---- FILE: .\backend\models\User.js ---
-﻿// ============================================================
-//  backend/models/User.js
-//
-//  Supports:
-//  - Email/Password login
-//  - Google login (Firebase)
-//  - Account linking (both)
-//  - Password reset flow
-// ============================================================
+--- FILE: .\backend\routes\foodScan.js ---
+const express = require("express");
+const multer = require("multer");
+const auth = require("../middleware/auth");
+const Nutrition = require("../models/nutrition");
+const OpenAI = require("openai");
 
-const mongoose = require("mongoose");
+const router = express.Router();
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
-const userSchema = new mongoose.Schema(
-    {
-        // ─────────────────────────────────────────────
-        // Core Identity Fields
-        // ─────────────────────────────────────────────
-        name: {
-            type: String,
-            required: true,
-            trim: true,
-        },
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
 
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            lowercase: true,
-            trim: true,
-        },
+/* ================= GET OR CREATE TODAY LOG ================= */
+async function getTodayLog(userId) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
 
-        // Password required ONLY for local users
-        password: {
-            type: String,
-            required: function () {
-                return this.authProvider === "local";
-            },
-        },
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
 
-        // ─────────────────────────────────────────────
-        // Google OAuth Fields
-        // ─────────────────────────────────────────────
-        googleId: {
-            type: String,
-            default: null,
-        },
+    let log = await Nutrition.findOne({
+        userId,
+        date: { $gte: start, $lte: end },
+    });
 
-        avatar: {
-            type: String,
-            default: null,
-        },
-
-        authProvider: {
-            type: String,
-            enum: ["local", "google", "both"],
-            default: "local",
-        },
-
-        // ─────────────────────────────────────────────
-        // Password Reset
-        // ─────────────────────────────────────────────
-        passwordResetToken: {
-            type: String,
-            default: undefined,
-        },
-
-        passwordResetExpires: {
-            type: Date,
-            default: undefined,
-        },
-
-        // ─────────────────────────────────────────────
-        // Future onboarding wizard support
-        // ─────────────────────────────────────────────
-        onboardingComplete: {
-            type: Boolean,
-            default: false,
-        },
-    },
-    {
-        timestamps: true, // createdAt + updatedAt
+    if (!log) {
+        log = await Nutrition.create({
+            userId,
+            meals: [],
+        });
     }
+
+    return log;
+}
+
+/* ================= FOOD IMAGE SCAN ================= */
+router.post("/", auth, upload.single("image"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "Image required" });
+        }
+
+        const base64Image = req.file.buffer.toString("base64");
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                {
+                    role: "system",
+                    content: `
+You are a professional nutritionist.
+
+Return ONLY valid JSON.
+No markdown.
+No explanation.
+
+Format:
+{
+  "name": "Food name",
+  "calories": 500,
+  "protein": 30,
+  "carbs": 60,
+  "fat": 15
+}
+`,
+                },
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: "Analyze this food image and estimate nutrition values.",
+                        },
+                        {
+                            type: "image_url",
+                            image_url: {
+                                url: `data:image/jpeg;base64,${base64Image}`,
+                            },
+                        },
+                    ],
+                },
+            ],
+            max_tokens: 250,
+            temperature: 0.3,
+        });
+
+        const raw = completion.choices[0].message.content;
+        const match = raw.match(/\{[\s\S]*\}/);
+
+        if (!match) {
+            return res.status(500).json({
+                error: "AI returned invalid format",
+            });
+        }
+
+        const nutritionData = JSON.parse(match[0]);
+
+        const log = await getTodayLog(req.user.userId);
+
+        log.meals.push({
+            name: nutritionData.name,
+            calories: Number(nutritionData.calories) || 0,
+            protein: Number(nutritionData.protein) || 0,
+            carbs: Number(nutritionData.carbs) || 0,
+            fat: Number(nutritionData.fat) || 0,
+            time: "Anytime",
+        });
+
+        await log.save();
+
+        res.json({
+            message: "Food scanned successfully",
+            meal: nutritionData,
+            log,
+        });
+    } catch (error) {
+        console.error("FOOD SCAN ERROR:", error);
+        res.status(500).json({ error: "Food scan failed" });
+    }
+});
+
+module.exports = router;
+--- END OF .\backend\routes\foodScan.js ---
+
+--- FILE: .\frontend\app\dashboard\layout.tsx ---
+﻿"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
+
+const GlobalWeatherBackground = dynamic(
+    () => import("@/components/GlobalWeatherBackground"),
+    { ssr: false }
 );
 
-// Index for fast Google login lookups
-userSchema.index({ googleId: 1 }, { sparse: true });
-
-module.exports = mongoose.model("User", userSchema);
---- END OF .\backend\models\User.js ---
-
---- FILE: .\frontend\app\globals.css ---
-@import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+interface DashboardLayoutProps {
+    children: ReactNode;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ================= NAV ================= */
+
+const navItems = [
+    { name: "Dashboard", href: "/dashboard", icon: "⚡" },
+    { name: "Earth", href: "/dashboard/Earth", icon: "🌍" },
+    { name: "Plan", href: "/dashboard/plan", icon: "📋" },
+    { name: "Coach", href: "/dashboard/coach", icon: "🤖" },
+    { name: "Analytics", href: "/dashboard/analytics", icon: "📊" },
+    { name: "Nutrition", href: "/dashboard/nutrition", icon: "🥗" },
+    { name: "Health", href: "/dashboard/health", icon: "❤️" },
+    { name: "Profile", href: "/dashboard/Profile", icon: "👤" },
+];
+
+const pageTitles: Record<string, string> = {
+    "/dashboard": "Dashboard",
+    "/dashboard/earth": "Earth Globe",
+    "/dashboard/plan": "Training Plan",
+    "/dashboard/coach": "AI Coach",
+    "/dashboard/analytics": "Analytics",
+    "/dashboard/nutrition": "Nutrition",
+    "/dashboard/health": "Health",
+    "/dashboard/profile": "Profile",
+};
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+    const pathname = usePathname();
+    const router = useRouter();
+    const { token, loading, logout, user } = useAuth();
+
+    const [userName, setUserName] = useState<string>("User");
+    const [time, setTime] = useState(new Date());
+    const [mobileOpen, setMobileOpen] = useState(false);
+
+    const normalizedPath = pathname?.toLowerCase() ?? "";
+
+    /* ================= LIVE CLOCK ================= */
+
+    useEffect(() => {
+        const t = setInterval(() => setTime(new Date()), 1000);
+        return () => clearInterval(t);
+    }, []);
+
+    /* ================= USER NAME RESOLUTION ================= */
+
+    useEffect(() => {
+        if (user?.name) {
+            setUserName(user.name);
+            return;
+        }
+
+        const storedToken = token || localStorage.getItem("token");
+        if (!storedToken) return;
+
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${storedToken}` },
+        })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d?.name) setUserName(d.name);
+            })
+            .catch(() => { });
+    }, [token, user]);
+
+    /* ================= AUTH PROTECTION ================= */
+
+    useEffect(() => {
+        if (!loading && !token) router.replace("/login");
+    }, [loading, token, router]);
+
+    /* ================= WEATHER BACKGROUND ================= */
+
+    const weatherType = useMemo(() => {
+        if (normalizedPath === "/dashboard") return "clear";
+        if (normalizedPath.includes("/earth")) return "night";
+        if (normalizedPath.includes("/plan")) return "rain";
+        if (normalizedPath.includes("/profile")) return "fog";
+        if (normalizedPath.includes("/coach")) return "clouds";
+        if (normalizedPath.includes("/analytics")) return "clear";
+        if (normalizedPath.includes("/nutrition")) return "clouds";
+        if (normalizedPath.includes("/health")) return "clear";
+        return "clouds";
+    }, [normalizedPath]);
+
+    const pageTitle = pageTitles[normalizedPath] ?? "Smart Life";
+
+    const initials = userName
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+
+    const isFullScreenPage = normalizedPath.includes("/earth");
+
+    if (loading || !token) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black text-white">
+                <motion.div
+                    className="w-10 h-10 border-2 border-[#c8ff00] border-t-transparent rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative min-h-screen text-white overflow-hidden">
+            <GlobalWeatherBackground type={weatherType} />
+
+            <div className="relative z-10 flex min-h-screen">
+
+                {/* ================= MOBILE OVERLAY ================= */}
+                {mobileOpen && (
+                    <div
+                        onClick={() => setMobileOpen(false)}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+                    />
+                )}
+
+                {/* ================= SIDEBAR ================= */}
+                <aside
+                    className={`
+            fixed md:relative z-50 md:z-auto
+            w-20
+            h-full md:h-auto
+            bg-black/40 backdrop-blur-xl border-r border-white/10
+            flex flex-col items-center py-6 gap-2
+            transition-transform duration-300
+            ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          `}
+                >
+                    <motion.div
+                        whileHover={{ scale: 1.08 }}
+                        className="w-11 h-11 bg-[#c8ff00] rounded-xl flex items-center justify-center mb-6 text-black font-black text-sm"
+                    >
+                        SL
+                    </motion.div>
+
+                    <nav className="flex flex-col gap-1.5 flex-1 w-full px-2">
+                        {navItems.map((item) => {
+                            const active =
+                                normalizedPath === item.href.toLowerCase() ||
+                                (item.href !== "/dashboard" &&
+                                    normalizedPath.startsWith(item.href.toLowerCase()));
+
+                            return (
+                                <Link key={item.href} href={item.href}>
+                                    <motion.div
+                                        whileHover={{ scale: 1.08 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setMobileOpen(false)}
+                                        title={item.name}
+                                        className={[
+                                            "w-full h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer",
+                                            active
+                                                ? "bg-[#c8ff00] text-black shadow-lg shadow-[#c8ff00]/20"
+                                                : "text-white/40 hover:text-white hover:bg-white/10",
+                                        ].join(" ")}
+                                    >
+                                        <span className="text-base leading-none">
+                                            {item.icon}
+                                        </span>
+                                        <span className="text-[9px] font-medium leading-none tracking-wide">
+                                            {item.name.slice(0, 3)}
+                                        </span>
+                                    </motion.div>
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    <motion.button
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={logout}
+                        title="Logout"
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white/20 hover:text-red-400 hover:bg-red-400/10 transition-all text-lg"
+                    >
+                        ⏻
+                    </motion.button>
+                </aside>
+
+                {/* ================= MAIN AREA ================= */}
+                <div className="flex-1 flex flex-col min-w-0">
+
+                    {/* ================= TOPBAR ================= */}
+                    <header className="h-14 border-b border-white/10 flex items-center justify-between px-4 md:px-8 bg-black/20 backdrop-blur-md shrink-0">
+
+                        <div className="flex items-center gap-3">
+                            {/* Mobile Menu Button */}
+                            <button
+                                onClick={() => setMobileOpen(true)}
+                                className="md:hidden text-xl text-white/70"
+                            >
+                                ☰
+                            </button>
+
+                            <span className="text-xs font-bold tracking-[0.25em] text-white/20 uppercase">
+                                Smart Life
+                            </span>
+                            <span className="text-white/15">/</span>
+
+                            <motion.span
+                                key={pageTitle}
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-sm font-semibold text-white"
+                            >
+                                {pageTitle}
+                            </motion.span>
+                        </div>
+
+                        <div className="flex items-center gap-5">
+                            <div className="text-right hidden sm:block">
+                                <div className="text-xs font-mono text-white/50">
+                                    {time.toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        second: "2-digit",
+                                    })}
+                                </div>
+                                <div className="text-[10px] text-white/25">
+                                    {time.toLocaleDateString("en-US", {
+                                        weekday: "short",
+                                        month: "short",
+                                        day: "numeric",
+                                    })}
+                                </div>
+                            </div>
+
+                            <Link href="/dashboard/Profile">
+                                <motion.div
+                                    whileHover={{ scale: 1.05 }}
+                                    className="flex items-center gap-2.5 cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 rounded-xl bg-[#c8ff00] flex items-center justify-center text-black text-xs font-bold">
+                                        {initials}
+                                    </div>
+                                    <span className="text-sm text-white/60 hidden md:block">
+                                        {userName}
+                                    </span>
+                                </motion.div>
+                            </Link>
+                        </div>
+                    </header>
+
+                    {/* ================= PAGE CONTENT ================= */}
+                    <main
+                        className={[
+                            "flex-1 overflow-auto",
+                            isFullScreenPage
+                                ? "p-0 overflow-hidden"
+                                : "p-4 sm:p-6 md:p-8",
+                        ].join(" ")}
+                    >
+                        {children}
+                    </main>
+                </div>
+            </div>
+        </div>
+    );
 }
+--- END OF .\frontend\app\dashboard\layout.tsx ---
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+--- FILE: .\frontend\components\WeatherBackground.tsx ---
+﻿"use client";
+
+export type WeatherType =
+    | "clear"
+    | "clouds"
+    | "rain"
+    | "thunder"
+    | "fog"
+    | "night";
+
+type Props = {
+    type: WeatherType;
+};
+
+export default function WeatherBackground({ type }: Props) {
+    return (
+        <div className="absolute inset-0 overflow-hidden">
+            {type === "clear" && (
+                <div className="absolute inset-0 bg-gradient-to-br from-sky-400 to-indigo-900" />
+            )}
+
+            {type === "clouds" && (
+                <div className="absolute inset-0 bg-gradient-to-br from-gray-400 to-gray-900" />
+            )}
+
+            {type === "rain" && (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-700 to-black" />
+            )}
+
+            {type === "thunder" && (
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-900 to-black" />
+            )}
+
+            {type === "fog" && (
+                <div className="absolute inset-0 bg-gray-500" />
+            )}
+
+            {type === "night" && (
+                <div className="absolute inset-0 bg-gradient-to-br from-black to-indigo-950" />
+            )}
+        </div>
+    );
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-@keyframes rain {
-    0% {
-        transform: translateY(-100vh);
-        opacity: 0;
-    }
-
-    20% {
-        opacity: 0.6;
-    }
-
-    80% {
-        opacity: 0.6;
-    }
-
-    100% {
-        transform: translateY(100vh);
-        opacity: 0;
-    }
-}
-
-
-.animate-rain {
-    animation: rain 1.5s linear infinite;
-}
-
-@keyframes cloud1 {
-    0% {
-        transform: translateX(-50px);
-    }
-
-    100% {
-        transform: translateX(50px);
-    }
-}
-
-@keyframes cloud2 {
-    0% {
-        transform: translateX(50px);
-    }
-
-    100% {
-        transform: translateX(-50px);
-    }
-}
-
-.animate-cloud1 {
-    animation: cloud1 20s ease-in-out infinite alternate;
-}
-
-.animate-cloud2 {
-    animation: cloud2 25s ease-in-out infinite alternate;
-}
-/* ================= LIGHTNING ================= */
-
-@keyframes lightning {
-    0% {
-        opacity: 0;
-    }
-
-    3% {
-        opacity: 0.9;
-    }
-
-    6% {
-        opacity: 0;
-    }
-
-    100% {
-        opacity: 0;
-    }
-}
-
-.animate-lightning {
-    animation: lightning 6s infinite;
-}
-
---- END OF .\frontend\app\globals.css ---
-
---- FILE: .\frontend\components\Sidebar.tsx ---
-
---- END OF .\frontend\components\Sidebar.tsx ---
+--- END OF .\frontend\components\WeatherBackground.tsx ---
 
