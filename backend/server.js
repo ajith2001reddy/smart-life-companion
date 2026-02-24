@@ -81,7 +81,7 @@ app.use(
     })
 );
 
-app.options("*", cors()); // VERY IMPORTANT
+app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 
 /* ═══════════ ROUTES ═══════════ */
