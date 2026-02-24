@@ -1,5 +1,8 @@
 ﻿"use client";
 
+// frontend/app/dashboard/layout.tsx  (UPDATED)
+// Added: Workout nav item, ErrorBoundary wrapping
+
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -7,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const GlobalWeatherBackground = dynamic(
     () => import("@/components/GlobalWeatherBackground"),
@@ -17,12 +21,11 @@ interface DashboardLayoutProps {
     children: ReactNode;
 }
 
-/* ================= NAV ================= */
-
 const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: "⚡" },
     { name: "Earth", href: "/dashboard/Earth", icon: "🌍" },
     { name: "Plan", href: "/dashboard/plan", icon: "📋" },
+    { name: "Workout", href: "/dashboard/workout", icon: "🏋️" },
     { name: "Coach", href: "/dashboard/coach", icon: "🤖" },
     { name: "Analytics", href: "/dashboard/analytics", icon: "📊" },
     { name: "Nutrition", href: "/dashboard/nutrition", icon: "🥗" },
@@ -34,6 +37,7 @@ const pageTitles: Record<string, string> = {
     "/dashboard": "Dashboard",
     "/dashboard/earth": "Earth Globe",
     "/dashboard/plan": "Training Plan",
+    "/dashboard/workout": "Workout Log",
     "/dashboard/coach": "AI Coach",
     "/dashboard/analytics": "Analytics",
     "/dashboard/nutrition": "Nutrition",
@@ -52,46 +56,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
     const normalizedPath = pathname?.toLowerCase() ?? "";
 
-    /* ================= LIVE CLOCK ================= */
-
     useEffect(() => {
         const t = setInterval(() => setTime(new Date()), 1000);
         return () => clearInterval(t);
     }, []);
 
-    /* ================= USER NAME RESOLUTION ================= */
-
     useEffect(() => {
-        if (user?.name) {
-            setUserName(user.name);
-            return;
-        }
-
+        if (user?.name) { setUserName(user.name); return; }
         const storedToken = token || localStorage.getItem("token");
         if (!storedToken) return;
-
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${storedToken}` },
         })
             .then((r) => (r.ok ? r.json() : null))
-            .then((d) => {
-                if (d?.name) setUserName(d.name);
-            })
+            .then((d) => { if (d?.name) setUserName(d.name); })
             .catch(() => { });
     }, [token, user]);
-
-    /* ================= AUTH PROTECTION ================= */
 
     useEffect(() => {
         if (!loading && !token) router.replace("/login");
     }, [loading, token, router]);
 
-    /* ================= WEATHER BACKGROUND ================= */
-
     const weatherType = useMemo(() => {
         if (normalizedPath === "/dashboard") return "clear";
         if (normalizedPath.includes("/earth")) return "night";
         if (normalizedPath.includes("/plan")) return "rain";
+        if (normalizedPath.includes("/workout")) return "clouds";
         if (normalizedPath.includes("/profile")) return "fog";
         if (normalizedPath.includes("/coach")) return "clouds";
         if (normalizedPath.includes("/analytics")) return "clear";
@@ -129,7 +119,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             <div className="relative z-10 flex min-h-screen">
 
-                {/* ================= MOBILE OVERLAY ================= */}
+                {/* Mobile overlay */}
                 {mobileOpen && (
                     <div
                         onClick={() => setMobileOpen(false)}
@@ -137,17 +127,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     />
                 )}
 
-                {/* ================= SIDEBAR ================= */}
+                {/* Sidebar */}
                 <aside
                     className={`
-            fixed md:relative z-50 md:z-auto
-            w-20
-            h-full md:h-auto
-            bg-black/40 backdrop-blur-xl border-r border-white/10
-            flex flex-col items-center py-6 gap-2
-            transition-transform duration-300
-            ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-          `}
+                        fixed md:relative z-50 md:z-auto
+                        w-20 h-full md:h-auto min-h-screen
+                        bg-black/40 backdrop-blur-xl border-r border-white/10
+                        flex flex-col items-center py-6 gap-2
+                        transition-transform duration-300
+                        ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+                    `}
                 >
                     <motion.div
                         whileHover={{ scale: 1.08 }}
@@ -156,7 +145,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         SL
                     </motion.div>
 
-                    <nav className="flex flex-col gap-1.5 flex-1 w-full px-2">
+                    <nav className="flex flex-col gap-1.5 flex-1 w-full px-2 overflow-y-auto">
                         {navItems.map((item) => {
                             const active =
                                 normalizedPath === item.href.toLowerCase() ||
@@ -177,11 +166,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                                 : "text-white/40 hover:text-white hover:bg-white/10",
                                         ].join(" ")}
                                     >
-                                        <span className="text-base leading-none">
-                                            {item.icon}
-                                        </span>
+                                        <span className="text-base leading-none">{item.icon}</span>
                                         <span className="text-[9px] font-medium leading-none tracking-wide">
-                                            {item.name.slice(0, 3)}
+                                            {item.name.slice(0, 4)}
                                         </span>
                                     </motion.div>
                                 </Link>
@@ -200,26 +187,20 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     </motion.button>
                 </aside>
 
-                {/* ================= MAIN AREA ================= */}
+                {/* Main area */}
                 <div className="flex-1 flex flex-col min-w-0">
 
-                    {/* ================= TOPBAR ================= */}
+                    {/* Topbar */}
                     <header className="h-14 border-b border-white/10 flex items-center justify-between px-4 md:px-8 bg-black/20 backdrop-blur-md shrink-0">
-
                         <div className="flex items-center gap-3">
-                            {/* Mobile Menu Button */}
                             <button
                                 onClick={() => setMobileOpen(true)}
                                 className="md:hidden text-xl text-white/70"
                             >
                                 ☰
                             </button>
-
-                            <span className="text-xs font-bold tracking-[0.25em] text-white/20 uppercase">
-                                Smart Life
-                            </span>
+                            <span className="text-xs font-bold tracking-[0.25em] text-white/20 uppercase">Smart Life</span>
                             <span className="text-white/15">/</span>
-
                             <motion.span
                                 key={pageTitle}
                                 initial={{ opacity: 0, y: -4 }}
@@ -233,47 +214,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <div className="flex items-center gap-5">
                             <div className="text-right hidden sm:block">
                                 <div className="text-xs font-mono text-white/50">
-                                    {time.toLocaleTimeString([], {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        second: "2-digit",
-                                    })}
+                                    {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                                 </div>
                                 <div className="text-[10px] text-white/25">
-                                    {time.toLocaleDateString("en-US", {
-                                        weekday: "short",
-                                        month: "short",
-                                        day: "numeric",
-                                    })}
+                                    {time.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                                 </div>
                             </div>
-
                             <Link href="/dashboard/Profile">
-                                <motion.div
-                                    whileHover={{ scale: 1.05 }}
-                                    className="flex items-center gap-2.5 cursor-pointer"
-                                >
+                                <motion.div whileHover={{ scale: 1.05 }} className="flex items-center gap-2.5 cursor-pointer">
                                     <div className="w-8 h-8 rounded-xl bg-[#c8ff00] flex items-center justify-center text-black text-xs font-bold">
                                         {initials}
                                     </div>
-                                    <span className="text-sm text-white/60 hidden md:block">
-                                        {userName}
-                                    </span>
+                                    <span className="text-sm text-white/60 hidden md:block">{userName}</span>
                                 </motion.div>
                             </Link>
                         </div>
                     </header>
 
-                    {/* ================= PAGE CONTENT ================= */}
+                    {/* Page content */}
                     <main
                         className={[
                             "flex-1 overflow-auto",
-                            isFullScreenPage
-                                ? "p-0 overflow-hidden"
-                                : "p-4 sm:p-6 md:p-8",
+                            isFullScreenPage ? "p-0 overflow-hidden" : "p-4 sm:p-6 md:p-8",
                         ].join(" ")}
                     >
-                        {children}
+                        <ErrorBoundary>
+                            {children}
+                        </ErrorBoundary>
                     </main>
                 </div>
             </div>

@@ -1,80 +1,117 @@
-﻿const express = require("express");
+﻿// ============================================================
+// backend/routes/health.js  (FULL REPLACEMENT)
+// Fix: Apple Shortcut name lookup is now case-insensitive
+// ============================================================
+
+const express = require("express");
 const Health = require("../models/health");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-/* ================= DEBUG ================= */
+/* ============================================================
+   DEBUG — list last 10 records (remove in production)
+============================================================ */
 router.get("/debug", async (req, res) => {
     try {
-        const allRecords = await Health.find({}).sort({ date: -1 }).limit(10);
-        res.json({
-            totalRecords: allRecords.length,
-            records: allRecords.map((r) => ({
-                _id: r._id, userId: r.userId, steps: r.steps,
-                heartRate: r.heartRate, sleepHours: r.sleepHours, date: r.date,
-            })),
-        });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+        const records = await Health.find({}).sort({ date: -1 }).limit(10);
+        res.json({ totalRecords: records.length, records });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-/* ================= APPLE SHORTCUT SYNC ================= */
+/* ============================================================
+   APPLE SHORTCUT SYNC — case-insensitive username fix
+============================================================ */
 router.post("/shortcut", async (req, res) => {
     try {
         const { apiKey, username, steps, heartRate, sleepHours, restingHR, caloriesBurned } = req.body;
+
         if (!apiKey || apiKey !== process.env.SHORTCUT_API_KEY)
             return res.status(401).json({ error: "Invalid API key" });
-        if (!username) return res.status(400).json({ error: "username is required" });
+        if (!username)
+            return res.status(400).json({ error: "username is required" });
 
+        // ✅ FIX: case-insensitive regex search instead of exact match
         const user = await User.findOne({
-            name: username.toLowerCase().trim()
+            name: { $regex: new RegExp(`^${username.trim()}$`, "i") },
         });
-        if (!user) return res.status(404).json({ error: `No user found with username "${username}"` });
+
+        if (!user)
+            return res.status(404).json({
+                error: `No user found with username "${username}"`,
+            });
 
         const newHealth = await Health.create({
             userId: user._id.toString(),
-            steps: Number(steps) || 0, heartRate: Number(heartRate) || 0,
-            sleepHours: Number(sleepHours) || 0, restingHR: Number(restingHR) || 0,
-            caloriesBurned: Number(caloriesBurned) || 0, date: new Date(),
+            steps: Number(steps) || 0,
+            heartRate: Number(heartRate) || 0,
+            sleepHours: Number(sleepHours) || 0,
+            restingHR: Number(restingHR) || 0,
+            caloriesBurned: Number(caloriesBurned) || 0,
+            date: new Date(),
         });
 
-        res.json({ success: true, message: `Health data synced for ${user.name} ✅`, resolvedUserId: user._id, data: newHealth });
+        // Update lastSync timestamp for activity log display
+        await User.findByIdAndUpdate(user._id, {
+            $set: { lastHealthSync: new Date() },
+        });
+
+        res.json({
+            success: true,
+            message: `Health data synced for ${user.name} ✅`,
+            resolvedUserId: user._id,
+            data: newHealth,
+        });
     } catch (err) {
         console.error("Shortcut Sync Error:", err);
         res.status(500).json({ error: "Sync failed", details: err.message });
     }
 });
 
-/* ================= SAVE HEALTH DATA (JWT) ================= */
+/* ============================================================
+   SAVE HEALTH DATA (JWT-authenticated)
+============================================================ */
 router.post("/sync", auth, async (req, res) => {
     try {
         const userId = req.user.userId;
         const { steps, heartRate, sleepHours, restingHR, caloriesBurned } = req.body;
+
         const newHealth = await Health.create({
-            userId, steps, heartRate, sleepHours, restingHR, caloriesBurned, date: new Date(),
+            userId,
+            steps: Number(steps) || 0,
+            heartRate: Number(heartRate) || 0,
+            sleepHours: Number(sleepHours) || 0,
+            restingHR: Number(restingHR) || 0,
+            caloriesBurned: Number(caloriesBurned) || 0,
+            date: new Date(),
         });
+
         res.json({ message: "Health data saved", data: newHealth });
     } catch (err) {
         res.status(500).json({ error: "Health sync failed", details: err.message });
     }
 });
 
-/* ================= GET LATEST ================= */
+/* ============================================================
+   GET LATEST health entry
+============================================================ */
 router.get("/latest", auth, async (req, res) => {
     try {
         const userId = req.user.userId;
         const latest = await Health.findOne({ userId }).sort({ date: -1 });
         res.json(latest || null);
-    } catch (err) { res.status(500).json({ error: "Failed to fetch latest health data" }); }
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch latest health data" });
+    }
 });
 
-/* ================= GET HISTORY ================= */
-/*
- * GET /api/health/history?days=30
- * days: 7, 14, 30, 90 or omit for all records
- * Returns oldest→newest for charting
- */
+/* ============================================================
+   GET HISTORY
+   GET /api/health/history?days=30
+============================================================ */
 router.get("/history", auth, async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -87,16 +124,17 @@ router.get("/history", auth, async (req, res) => {
             query.date = { $gte: since };
         }
 
-        const history = await Health.find(query).sort({ date: 1 }); // oldest first
+        const history = await Health.find(query).sort({ date: 1 });
         res.json(history);
-    } catch (err) { res.status(500).json({ error: "Failed to fetch health history" }); }
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch health history" });
+    }
 });
 
-/* ================= GET STATS SUMMARY ================= */
-/*
- * GET /api/health/stats?days=30
- * Returns averages, bests, and % trends for the period
- */
+/* ============================================================
+   GET STATS SUMMARY
+   GET /api/health/stats?days=30
+============================================================ */
 router.get("/stats", auth, async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -116,7 +154,6 @@ router.get("/stats", auth, async (req, res) => {
         const sleep = records.map((r) => r.sleepHours).filter((v) => v > 0);
         const cals = records.map((r) => r.caloriesBurned).filter((v) => v > 0);
 
-        // Trend: second half vs first half
         const mid = Math.floor(records.length / 2);
         const trend = (key) => {
             const fh = records.slice(0, mid).map((r) => r[key]).filter((v) => v > 0);
@@ -146,16 +183,21 @@ router.get("/stats", auth, async (req, res) => {
                 caloriesBurned: trend("caloriesBurned"),
             },
         });
-    } catch (err) { res.status(500).json({ error: "Failed to calculate stats", details: err.message }); }
+    } catch (err) {
+        res.status(500).json({ error: "Failed to calculate stats", details: err.message });
+    }
 });
 
-/* ================= READINESS SCORE ================= */
+/* ============================================================
+   READINESS SCORE
+============================================================ */
 router.get("/readiness", auth, async (req, res) => {
     try {
         const userId = req.user.userId;
         const latest = await Health.findOne({ userId }).sort({ date: -1 });
 
-        if (!latest) return res.json({ readinessScore: 0, message: "No health data synced yet.", noData: true });
+        if (!latest)
+            return res.json({ readinessScore: 0, message: "No health data synced yet.", noData: true });
 
         let score = 50;
         if (latest.sleepHours >= 7) score += 20;
@@ -166,15 +208,26 @@ router.get("/readiness", auth, async (req, res) => {
 
         res.json({
             readinessScore: score,
-            message: score > 80 ? "Your body is fully recovered. High intensity training recommended."
-                : score > 60 ? "Moderate recovery. Train smart today."
-                    : "Low recovery. Focus on rest and mobility.",
+            message:
+                score > 80 ? "Your body is fully recovered. High intensity training recommended."
+                    : score > 60 ? "Moderate recovery. Train smart today."
+                        : "Low recovery. Focus on rest and mobility.",
             noData: false,
+            factors: {
+                sleep: latest.sleepHours,
+                restingHR: latest.restingHR,
+                steps: latest.steps,
+                heartRate: latest.heartRate,
+            },
         });
-    } catch (err) { res.status(500).json({ error: "Failed to calculate readiness", details: err.message }); }
+    } catch (err) {
+        res.status(500).json({ error: "Failed to calculate readiness", details: err.message });
+    }
 });
 
-/* ================= DELETE A RECORD ================= */
+/* ============================================================
+   DELETE A RECORD
+============================================================ */
 router.delete("/:id", auth, async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -182,7 +235,9 @@ router.delete("/:id", auth, async (req, res) => {
         if (!record) return res.status(404).json({ error: "Record not found" });
         await Health.deleteOne({ _id: req.params.id });
         res.json({ message: "Record deleted" });
-    } catch (err) { res.status(500).json({ error: "Delete failed" }); }
+    } catch (err) {
+        res.status(500).json({ error: "Delete failed" });
+    }
 });
 
 module.exports = router;
