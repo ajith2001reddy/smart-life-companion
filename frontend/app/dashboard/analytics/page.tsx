@@ -6,7 +6,7 @@ import {
     AreaChart, Area, BarChart, Bar, LineChart, Line,
     XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis,
 } from "recharts";
-
+import { Variants } from "framer-motion";
 type Stats = {
     performanceScore: number;
     weeklyVolume: number;
@@ -16,10 +16,18 @@ type Stats = {
 
 type TrendAlert = { type: "positive" | "negative" | "neutral"; message: string; metric: string };
 
-const fadeUp = (delay = 0) => ({
-    hidden: { opacity: 0, y: 24 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.48, delay, ease: "easeOut" } },
-});
+const fadeIn: Variants = {
+    hidden: { opacity: 0, y: 20 },
+    show: {
+        opacity: 1,
+        y: 0,
+        transition: {
+            duration: 0.6,
+            delay: 0.2,
+            ease: "easeOut" as const // now typed correctly
+        },
+    },
+};
 
 const TOOLTIP_STYLE = {
     backgroundColor: "#0a0a0a",
