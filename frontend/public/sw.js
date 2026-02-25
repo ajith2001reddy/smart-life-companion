@@ -2,7 +2,7 @@
 // public/sw.js — Smart Life Service Worker
 // ============================================================
 
-const CACHE_NAME = "smartlife-v2"; // ✅ bumped version to force re-install
+const CACHE_NAME = "smartlife-v3"; // ✅ bumped version to force re-install
 
 const PRECACHE_URLS = [
     "/dashboard",
@@ -68,7 +68,8 @@ self.addEventListener("fetch", (event) => {
         fetch(event.request)
             .then((response) => {
                 // Only cache successful responses for same-origin pages
-                if (response.ok && response.type === "basic") {
+                if (response.status === 200 &&
+                    response.type === "basic") {
                     const clone = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, clone);

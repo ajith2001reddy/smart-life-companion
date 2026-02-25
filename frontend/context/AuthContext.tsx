@@ -1,5 +1,5 @@
 "use client";
-
+import { useRouter } from "next/navigation";
 import {
     createContext,
     useContext,
@@ -25,6 +25,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const router = useRouter();
+
     const [token, setToken] = useState<string | null>(() => {
         if (typeof window !== "undefined") {
             return localStorage.getItem("token");
@@ -35,26 +37,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // 🔥 Validate token & load user
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
 
-        if (storedToken) {
-            setToken(storedToken);
+        if (!storedToken) {
+            setLoading(false);
+            return;
         }
 
-        setLoading(false);
+        setToken(storedToken);
+
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
+            headers: {
+                Authorization: `Bearer ${storedToken}`,
+            },
+        })
+            .then((res) => {
+                if (!res.ok) throw new Error();
+                return res.json();
+            })
+            .then((data) => {
+                setUser(data);
+            })
+            .catch(() => {
+                localStorage.removeItem("token");
+                setToken(null);
+                setUser(null);
+            })
+            .finally(() => setLoading(false));
     }, []);
 
     const login = (newToken: string) => {
         localStorage.setItem("token", newToken);
         setToken(newToken);
+        router.push("/dashboard"); // ✅ redirect properly
     };
 
     const logout = () => {
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
-        window.location.href = "/login";
+        router.push("/login"); // ✅ no full reload
     };
 
     return (

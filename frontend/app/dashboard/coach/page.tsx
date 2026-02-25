@@ -100,7 +100,7 @@ export default function CoachPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ messages: content }),
+                body: JSON.stringify({ message: content }),
             });
 
             if (res.status === 401) {
@@ -110,7 +110,7 @@ export default function CoachPage() {
             }
 
             const data = await res.json();
-            const full = data.message;
+            const full = data?.message || "Sorry, something went wrong.";
             const aiTimestamp = new Date();
 
             setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: aiTimestamp }]);
