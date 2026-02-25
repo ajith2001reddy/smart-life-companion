@@ -38,7 +38,7 @@ app.use(cors({
     credentials: true,
 }));
 
-app.options("*", cors());
+
 
 // Then your middleware
 app.use(express.json());
