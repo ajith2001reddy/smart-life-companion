@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle, handleGoogleRedirect, loginWithEmail } from "@/lib/firebase";
+import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -16,29 +16,6 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // ─────────────────────────────────────────────
-    // Handle Google redirect result on page load
-    // (fires after user returns from Google auth)
-    // ─────────────────────────────────────────────
-    useEffect(() => {
-        setGLoading(true);
-        console.log("🔍 Checking redirect result...");
-        handleGoogleRedirect()
-            .then((data) => {
-                console.log("✅ Redirect result:", data);
-                if (data) {
-                    login(data.token);
-                    router.replace("/dashboard");
-                }
-            })
-            .catch((err: any) => {
-                console.error("❌ Redirect error:", err);
-                setError(err.message || "Google sign-in failed.");
-            })
-            .finally(() => {
-                setGLoading(false);
-            });
-    }, []);
     // ─────────────────────────────────────────────
     // Email / Password Login
     // ─────────────────────────────────────────────
@@ -66,15 +43,22 @@ export default function LoginPage() {
     };
 
     // ─────────────────────────────────────────────
-    // Google Login — kicks off redirect, page navigates away
+    // Google Login (popup — works with COOP allow-popups header)
     // ─────────────────────────────────────────────
     const handleGoogle = async () => {
         try {
             setGLoading(true);
             setError("");
-            await signInWithGoogle(); // redirects away, nothing after this runs
+
+            const data = await signInWithGoogle();
+            login(data.token);
+            router.replace("/dashboard");
+
         } catch (err: any) {
-            setError(err.message || "Google sign-in failed.");
+            if (err.code !== "auth/popup-closed-by-user" && err.message !== "Sign-in cancelled.") {
+                setError(err.message || "Google sign-in failed.");
+            }
+        } finally {
             setGLoading(false);
         }
     };
