@@ -11,12 +11,11 @@ import {
     sendPasswordResetEmail,
     setPersistence,
     browserLocalPersistence,
-    signOut,
     signInWithRedirect,
-    getRedirectResult
+    getRedirectResult,
 } from "firebase/auth";
 
-// ────────────────export const firebaseAuth = getAuth(app);─────────────────────────────
+// ─────────────────────────────────────────────
 // Firebase Config (from .env.local)
 // ─────────────────────────────────────────────
 const firebaseConfig = {
@@ -27,7 +26,7 @@ const firebaseConfig = {
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
-console.log("AUTH DOMAIN:", firebaseConfig.authDomain);
+
 // Prevent duplicate initialization
 const app =
     getApps().length === 0
@@ -35,34 +34,28 @@ const app =
         : getApps()[0];
 
 export const firebaseAuth = getAuth(app);
-setPersistence(firebaseAuth, browserLocalPersistence)
-    .then(() => {
-        console.log("Firebase persistence set to LOCAL");
-    })
-    .catch((err) => {
-        console.error("Persistence error:", err);
-    });
+
+setPersistence(firebaseAuth, browserLocalPersistence).catch((err) => {
+    console.error("Persistence error:", err);
+});
 
 // ─────────────────────────────────────────────
 // Google Provider
 // ─────────────────────────────────────────────
 const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({
-    prompt: "select_account",
-});
+googleProvider.setCustomParameters({ prompt: "select_account" });
 
 // ============================================================
-// GOOGLE LOGIN — popup (works now that COOP is allow-popups)
-// ============================================================https://smart-life-backend.onrender.com/api/auth/firebase-login
+// GOOGLE LOGIN — redirect flow
+// ============================================================
 export async function signInWithGoogle() {
     await signInWithRedirect(firebaseAuth, googleProvider);
 }
 
-// Handle redirect result
+// Handle redirect result (called from login page useEffect)
 export async function handleGoogleRedirect() {
     const result = await getRedirectResult(firebaseAuth);
-
-    if (!result || !result.user) return null;
+    if (!result?.user) return null;
 
     const idToken = await result.user.getIdToken();
 
@@ -76,11 +69,7 @@ export async function handleGoogleRedirect() {
     );
 
     const data = await res.json();
-
-    if (!res.ok) {
-        throw new Error(data.error || "Backend authentication failed.");
-    }
-
+    if (!res.ok) throw new Error(data.error || "Backend authentication failed.");
     return data;
 }
 
@@ -106,12 +95,11 @@ export async function registerWithEmail(email: string, password: string) {
     );
 
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Registration failed.");
 
-    if (!res.ok) {
-        throw new Error(data.error || "Registration failed.");
-    }
-
-    await signOut(firebaseAuth);
+    // ✅ FIX: Do NOT signOut here — it triggers onAuthStateChanged → duplicate
+    // backend call in login page. The backend JWT is our source of truth.
+    // Firebase session can stay alive; it's harmless.
 
     return data;
 }
@@ -138,12 +126,9 @@ export async function loginWithEmail(email: string, password: string) {
     );
 
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Login failed.");
 
-    if (!res.ok) {
-        throw new Error(data.error || "Login failed.");
-    }
-
-    await signOut(firebaseAuth);
+    // ✅ FIX: Do NOT signOut here — same reason as registerWithEmail above.
 
     return data;
 }

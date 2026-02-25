@@ -1,16 +1,16 @@
 // ============================================================
 // public/sw.js — Smart Life Service Worker
-// Caches the shell pages for offline access
 // ============================================================
 
-const CACHE_NAME = "smartlife-v1";
+const CACHE_NAME = "smartlife-v2"; // ✅ bumped version to force re-install
 
 const PRECACHE_URLS = [
-    "/",
     "/dashboard",
     "/login",
     "/register",
     "/manifest.json",
+    // ✅ FIX: Removed "/" from precache — the root just redirects to /dashboard
+    // and caching it can interfere with Firebase's OAuth redirect handling.
 ];
 
 // ── Install: precache shell ──────────────────────────────────
@@ -41,25 +41,42 @@ self.addEventListener("activate", (event) => {
 
 // ── Fetch: network-first with cache fallback ─────────────────
 self.addEventListener("fetch", (event) => {
-    // Only intercept GET requests for same-origin pages/assets
+    // Only intercept GET requests
     if (event.request.method !== "GET") return;
-    if (!event.request.url.startsWith(self.location.origin)) return;
 
-    // Skip API requests — always go to network
-    if (event.request.url.includes("/api/")) return;
+    const url = event.request.url;
+
+    // ✅ FIX 1: Skip cross-origin requests entirely
+    if (!url.startsWith(self.location.origin)) return;
+
+    // ✅ FIX 2: Skip API requests
+    if (url.includes("/api/")) return;
+
+    // ✅ FIX 3: Skip Firebase auth redirect URLs — these MUST hit the network
+    // so Firebase can extract the OAuth result from the URL hash/query params.
+    if (
+        url.includes("/__/auth/") ||          // Firebase auth handler path
+        url.includes("firebaseapp.com") ||    // Firebase hosted auth domain
+        url.includes("accounts.google.com") || // Google OAuth
+        url.includes("?apiKey=") ||           // Firebase redirect callback
+        url.includes("#state=") ||            // OAuth state param
+        url.includes("&code=") ||             // OAuth code param
+        url.includes("oauthCallback")
+    ) return;
 
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Cache fresh response for next time
-                const clone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, clone);
-                });
+                // Only cache successful responses for same-origin pages
+                if (response.ok && response.type === "basic") {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, clone);
+                    });
+                }
                 return response;
             })
             .catch(() =>
-                // Network failed — serve from cache
                 caches.match(event.request).then(
                     (cached) => cached || caches.match("/dashboard")
                 )

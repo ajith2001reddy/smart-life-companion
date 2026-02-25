@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle, loginWithEmail, handleGoogleRedirect } from "@/lib/firebase";
+import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
 import { getRedirectResult } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase";
-
-
 
 export default function LoginPage() {
     const router = useRouter();
@@ -19,68 +17,78 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
+
+    // ✅ FIX 1: Guard ref prevents multiple simultaneous backend calls
+    const isHandlingAuth = useRef(false);
+
+    // ── Helper: exchange Firebase idToken for backend JWT ──────────
+    const exchangeToken = async (user: NonNullable<typeof firebaseAuth.currentUser>) => {
+        // ✅ FIX 2: If already in-flight, bail out immediately
+        if (isHandlingAuth.current) return;
+        isHandlingAuth.current = true;
+
+        try {
+            const idToken = await user.getIdToken();
+
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ idToken }),
+                }
+            );
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || "Backend authentication failed.");
+            }
+
+            login(data.token);
+            router.replace("/dashboard");
+        } catch (err: any) {
+            console.error("Auth exchange failed:", err);
+            isHandlingAuth.current = false; // reset on failure so user can retry
+        }
+    };
+
     useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+
         const initAuth = async () => {
             try {
-                // First check redirect result
+                // ✅ FIX 3: Check redirect result FIRST (Google OAuth flow)
                 const result = await getRedirectResult(firebaseAuth);
 
                 if (result?.user) {
-                    const idToken = await result.user.getIdToken();
-
-                    const res = await fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ idToken }),
-                        }
-                    );
-
-                    const data = await res.json();
-
-                    if (!res.ok) {
-                        throw new Error(data.error || "Backend authentication failed.");
-                    }
-
-                    login(data.token);
-                    router.replace("/dashboard");
-                    return;
+                    // Came back from Google redirect — handle immediately
+                    await exchangeToken(result.user);
+                    return; // ← Don't set up onAuthStateChanged at all
                 }
 
-                // If no redirect result, check if user already logged in
-                const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+                // ✅ FIX 4: Only subscribe to onAuthStateChanged if no redirect result.
+                // This handles the "already logged in" case (e.g. page refresh).
+                // We unsubscribe after the first emission to prevent repeat calls.
+                unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+                    unsubscribe?.(); // ← Unsubscribe immediately after first call
                     if (!user) return;
-
-                    const idToken = await user.getIdToken();
-
-                    const res = await fetch(
-                        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ idToken }),
-                        }
-                    );
-
-                    const data = await res.json();
-
-                    if (!res.ok) {
-                        throw new Error(data.error || "Backend authentication failed.");
-                    }
-
-                    login(data.token);
-                    router.replace("/dashboard");
+                    await exchangeToken(user);
                 });
 
-                return () => unsubscribe();
             } catch (err) {
                 console.error("Auth initialization failed:", err);
             }
         };
 
         initAuth();
+
+        // Cleanup: unsubscribe if component unmounts before callback fires
+        return () => {
+            unsubscribe?.();
+        };
     }, []);
+
     // ─────────────────────────────────────────────
     // Email / Password Login
     // ─────────────────────────────────────────────
@@ -108,14 +116,14 @@ export default function LoginPage() {
     };
 
     // ─────────────────────────────────────────────
-    // Google Login (popup — works with COOP allow-popups header)
+    // Google Login (redirect flow)
     // ─────────────────────────────────────────────
     const handleGoogle = async () => {
         try {
             setGLoading(true);
             setError("");
 
-            await signInWithGoogle(); // this now redirects
+            await signInWithGoogle(); // triggers redirect
 
         } catch (err: any) {
             setError(err.message || "Google sign-in failed.");
