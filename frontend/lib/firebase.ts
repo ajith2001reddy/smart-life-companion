@@ -53,7 +53,7 @@ googleProvider.setCustomParameters({
 
 // ============================================================
 // GOOGLE LOGIN — popup (works now that COOP is allow-popups)
-// ============================================================
+// ============================================================https://smart-life-backend.onrender.com/api/auth/firebase-login
 export async function signInWithGoogle() {
     await signInWithRedirect(firebaseAuth, googleProvider);
 }

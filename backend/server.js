@@ -32,6 +32,16 @@ const ChatLog = require("./models/ChatLog");
 const auth = require("./middleware/auth");
 
 const app = express();
+app.use(cors({
+    origin: "https://smart-life-companion.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+}));
+
+app.options("*", cors());
+
+// Then your middleware
+app.use(express.json());
 
 /* ═══════════ DATABASE ═══════════ */
 const connectDB = require("./config/db");
@@ -67,34 +77,7 @@ const aiLimiter = rateLimit({
     message: { error: "AI rate limit reached. Try again in a minute." },
 });
 
-/* ═══════════ STANDARD MIDDLEWARE ═══════════ */
-const allowedOrigins = [
-    "https://smart-life-companion.vercel.app",
-    "http://localhost:3000",
-    /^https:\/\/smart-life-companion-.*\.vercel\.app$/,  // all preview URLs
-];
 
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    const allowed = allowedOrigins.some((o) =>
-        typeof o === "string" ? o === origin : o.test(origin ?? "")
-    );
-
-    if (allowed) {
-        res.header("Access-Control-Allow-Origin", origin);
-    }
-
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-
-    if (req.method === "OPTIONS") {
-        return res.sendStatus(200);
-    }
-
-    next();
-});
-app.use(express.json({ limit: "5mb" }));
 
 /* ═══════════ ROUTES ═══════════ */
 app.use("/api/weather", weatherRoute);
