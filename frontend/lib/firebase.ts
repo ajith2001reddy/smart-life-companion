@@ -25,34 +25,7 @@ import {
 // ============================================================
 // HANDLE GOOGLE REDIRECT RESULT (NEW - ADD ONLY)
 // ============================================================
-export async function handleGoogleRedirectResult() {
-    const result = await getRedirectResult(firebaseAuth);
 
-    console.log("Redirect result:", result); // 👈 ADD THIS LINE
-
-    if (!result?.user) return null;
-
-    const idToken = await result.user.getIdToken();
-
-    const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ idToken }),
-        }
-    );
-
-    const data = await res.json();
-
-    if (!res.ok) {
-        throw new Error(data.error || "Backend authentication failed.");
-    }
-
-    await signOut(firebaseAuth);
-
-    return data;
-}
 // ─────────────────────────────────────────────
 // Firebase Config (from .env.local)
 // ─────────────────────────────────────────────
