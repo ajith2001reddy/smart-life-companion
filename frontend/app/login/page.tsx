@@ -54,39 +54,36 @@ export default function LoginPage() {
     };
 
     useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
+        const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+            if (!user) return;
 
-        const initAuth = async () => {
             try {
-                // ✅ FIX 3: Check redirect result FIRST (Google OAuth flow)
-                const result = await getRedirectResult(firebaseAuth);
+                const idToken = await user.getIdToken();
 
-                if (result?.user) {
-                    // Came back from Google redirect — handle immediately
-                    await exchangeToken(result.user);
-                    return; // ← Don't set up onAuthStateChanged at all
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ idToken }),
+                    }
+                );
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || "Backend auth failed");
                 }
 
-                // ✅ FIX 4: Only subscribe to onAuthStateChanged if no redirect result.
-                // This handles the "already logged in" case (e.g. page refresh).
-                // We unsubscribe after the first emission to prevent repeat calls.
-                unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
-                    unsubscribe?.(); // ← Unsubscribe immediately after first call
-                    if (!user) return;
-                    await exchangeToken(user);
-                });
+                login(data.token);
+                router.replace("/dashboard");
 
             } catch (err) {
-                console.error("Auth initialization failed:", err);
+                console.error("Auth exchange failed:", err);
             }
-        };
+        });
 
-        initAuth();
-
-        // Cleanup: unsubscribe if component unmounts before callback fires
-        return () => {
-            unsubscribe?.();
-        };
+        return () => unsubscribe();
     }, []);
 
     // ─────────────────────────────────────────────
