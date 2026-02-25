@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, loginWithEmail, handleGoogleRedirect } from "@/lib/firebase";
+import { getRedirectResult } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
 
 
@@ -18,19 +20,66 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
     useEffect(() => {
-        const checkRedirect = async () => {
+        const initAuth = async () => {
             try {
-                const result = await handleGoogleRedirect();
-                if (!result) return;
+                // First check redirect result
+                const result = await getRedirectResult(firebaseAuth);
 
-                login(result.token);
-                router.replace("/dashboard");
+                if (result?.user) {
+                    const idToken = await result.user.getIdToken();
+
+                    const res = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ idToken }),
+                        }
+                    );
+
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(data.error || "Backend authentication failed.");
+                    }
+
+                    login(data.token);
+                    router.replace("/dashboard");
+                    return;
+                }
+
+                // If no redirect result, check if user already logged in
+                const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+                    if (!user) return;
+
+                    const idToken = await user.getIdToken();
+
+                    const res = await fetch(
+                        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                        {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ idToken }),
+                        }
+                    );
+
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(data.error || "Backend authentication failed.");
+                    }
+
+                    login(data.token);
+                    router.replace("/dashboard");
+                });
+
+                return () => unsubscribe();
             } catch (err) {
-                console.error("Redirect handling failed:", err);
+                console.error("Auth initialization failed:", err);
             }
         };
 
-        checkRedirect();
+        initAuth();
     }, []);
     // ─────────────────────────────────────────────
     // Email / Password Login
