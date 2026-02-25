@@ -18,18 +18,15 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // ✅ FIX 1: Guard ref prevents multiple simultaneous backend calls
     const isHandlingAuth = useRef(false);
 
     // ── Helper: exchange Firebase idToken for backend JWT ──────────
     const exchangeToken = async (user: NonNullable<typeof firebaseAuth.currentUser>) => {
-        // ✅ FIX 2: If already in-flight, bail out immediately
         if (isHandlingAuth.current) return;
         isHandlingAuth.current = true;
 
         try {
             const idToken = await user.getIdToken();
-
             const res = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
                 {
@@ -38,70 +35,66 @@ export default function LoginPage() {
                     body: JSON.stringify({ idToken }),
                 }
             );
-
             const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.error || "Backend authentication failed.");
-            }
-
+            if (!res.ok) throw new Error(data.error || "Backend authentication failed.");
             login(data.token);
             router.replace("/dashboard");
         } catch (err: any) {
             console.error("Auth exchange failed:", err);
-            isHandlingAuth.current = false; // reset on failure so user can retry
+            setError(err.message || "Authentication failed.");
+            isHandlingAuth.current = false;
+            setGLoading(false);
         }
     };
 
     useEffect(() => {
-        const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
-            console.log("Auth state changed:", user);
-            if (!user) return;
-
+        // ✅ KEY FIX: Handle the redirect result FIRST before setting up the listener
+        const handleRedirectAndListen = async () => {
             try {
-                const idToken = await user.getIdToken();
-
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ idToken }),
-                    }
-                );
-
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-
-                login(data.token);
-                router.replace("/dashboard");
-
-            } catch (err) {
-                console.error("Backend exchange failed:", err);
+                // This MUST be called to complete the Google redirect flow.
+                // It resolves with the user credential if we just came back from Google OAuth.
+                const result = await getRedirectResult(firebaseAuth);
+                if (result?.user) {
+                    setGLoading(true);
+                    await exchangeToken(result.user);
+                    return; // done — don't need the listener to also fire
+                }
+            } catch (err: any) {
+                console.error("getRedirectResult error:", err);
+                setError(err.message || "Google sign-in failed.");
+                setGLoading(false);
             }
+
+            // ✅ Only set up the onAuthStateChanged listener AFTER redirect is handled.
+            // This prevents it from double-firing when the redirect result also triggers it.
+            const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+                if (!user || isHandlingAuth.current) return;
+                await exchangeToken(user);
+            });
+
+            return unsubscribe;
+        };
+
+        let unsubscribeFn: (() => void) | undefined;
+        handleRedirectAndListen().then((unsub) => {
+            if (unsub) unsubscribeFn = unsub;
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeFn?.();
+        };
     }, []);
-    // ─────────────────────────────────────────────
+
     // Email / Password Login
-    // ─────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-
-        if (!email || !password) {
-            setError("Please fill all fields.");
-            return;
-        }
-
+        if (!email || !password) { setError("Please fill all fields."); return; }
         try {
             setLoading(true);
             setError("");
-
             const data = await loginWithEmail(email, password);
             login(data.token);
             router.replace("/dashboard");
-
         } catch (err: any) {
             setError(err.message || "Login failed.");
         } finally {
@@ -109,21 +102,18 @@ export default function LoginPage() {
         }
     };
 
-    // ─────────────────────────────────────────────
     // Google Login (redirect flow)
-    // ─────────────────────────────────────────────
     const handleGoogle = async () => {
         try {
             setGLoading(true);
             setError("");
-
-            await signInWithGoogle(); // triggers redirect
-
+            await signInWithGoogle(); // triggers redirect — page will reload
         } catch (err: any) {
             setError(err.message || "Google sign-in failed.");
             setGLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-black text-white px-6">
