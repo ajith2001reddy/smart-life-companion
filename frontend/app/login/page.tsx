@@ -20,13 +20,17 @@ export default function LoginPage() {
         const processRedirect = async () => {
             try {
                 const data = await handleGoogleRedirect();
+
                 if (!data) return;
+
+                console.log("Redirect login success:", data);
 
                 login(data.token);
                 router.replace("/dashboard");
 
             } catch (err) {
                 console.error("Redirect login failed:", err);
+                setError("Google login failed.");
             }
         };
 
