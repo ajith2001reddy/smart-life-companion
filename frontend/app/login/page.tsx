@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
-import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
+import { signInWithGoogle, handleGoogleRedirect, loginWithEmail } from "@/lib/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -15,9 +15,30 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
-    
+
     // ─────────────────────────────────────────────
-    // Email / Password Login (Firebase)
+    // Handle Google redirect result on page load
+    // (fires after user returns from Google auth)
+    // ─────────────────────────────────────────────
+    useEffect(() => {
+        setGLoading(true);
+        handleGoogleRedirect()
+            .then((data) => {
+                if (data) {
+                    login(data.token);
+                    router.replace("/dashboard");
+                }
+            })
+            .catch((err: any) => {
+                setError(err.message || "Google sign-in failed.");
+            })
+            .finally(() => {
+                setGLoading(false);
+            });
+    }, []);
+
+    // ─────────────────────────────────────────────
+    // Email / Password Login
     // ─────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -31,12 +52,8 @@ export default function LoginPage() {
             setLoading(true);
             setError("");
 
-            // 1️⃣ Firebase login
             const data = await loginWithEmail(email, password);
-
-            // 2️⃣ Save backend JWT
             login(data.token);
-
             router.replace("/dashboard");
 
         } catch (err: any) {
@@ -47,26 +64,19 @@ export default function LoginPage() {
     };
 
     // ─────────────────────────────────────────────
-    // Google Login
+    // Google Login — kicks off redirect, page navigates away
     // ─────────────────────────────────────────────
     const handleGoogle = async () => {
-    try {
-        setGLoading(true);
-        setError("");
-
-        const data = await signInWithGoogle();
-
-        login(data.token);
-        router.replace("/dashboard");
-
-    } catch (err: any) {
-        if (err.message !== "Sign-in cancelled.") {
+        try {
+            setGLoading(true);
+            setError("");
+            await signInWithGoogle(); // redirects away, nothing after this runs
+        } catch (err: any) {
             setError(err.message || "Google sign-in failed.");
+            setGLoading(false);
         }
-    } finally {
-        setGLoading(false);
-    }
-};
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-black text-white px-6">
             <motion.div

@@ -1,30 +1,18 @@
 // ============================================================
 // frontend/lib/firebase.ts
-//
-// Handles:
-// - Google Login
-// - Email/Password Register
-// - Email/Password Login
-// - Forgot Password
-//
-// Firebase handles authentication.
-// Backend verifies ID token and returns JWT.
 // ============================================================
 
 import { initializeApp, getApps } from "firebase/app";
 import {
     getAuth,
     GoogleAuthProvider,
-    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
     signOut,
-    type UserCredential,
 } from "firebase/auth";
-// ============================================================
-// HANDLE GOOGLE REDIRECT RESULT (NEW - ADD ONLY)
-// ============================================================
 
 // ─────────────────────────────────────────────
 // Firebase Config (from .env.local)
@@ -55,10 +43,22 @@ googleProvider.setCustomParameters({
 });
 
 // ============================================================
-// GOOGLE LOGIN
+// GOOGLE LOGIN — triggers a full-page redirect (no popup)
 // ============================================================
 export async function signInWithGoogle() {
-    const result = await signInWithPopup(firebaseAuth, googleProvider);
+    await signInWithRedirect(firebaseAuth, googleProvider);
+    // Page navigates away — result handled by handleGoogleRedirect()
+}
+
+// ============================================================
+// HANDLE GOOGLE REDIRECT RESULT
+// Call this on mount of the login page.
+// Returns backend data (token, userId, etc.) or null if no
+// redirect is in progress.
+// ============================================================
+export async function handleGoogleRedirect() {
+    const result = await getRedirectResult(firebaseAuth);
+    if (!result) return null;
 
     const idToken = await result.user.getIdToken();
 
