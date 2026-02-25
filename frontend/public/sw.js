@@ -2,11 +2,10 @@
 // public/sw.js — Smart Life Service Worker
 // ============================================================
 
-const CACHE_NAME = "smartlife-v3"; // ✅ bumped version to force re-install
+const CACHE_NAME = "smartlife-v4"; // ✅ bumped version to force re-install
 
 const PRECACHE_URLS = [
     "/dashboard",
-    "/login",
     "/register",
     "/manifest.json",
     // ✅ FIX: Removed "/" from precache — the root just redirects to /dashboard
@@ -45,7 +44,7 @@ self.addEventListener("fetch", (event) => {
     if (event.request.method !== "GET") return;
 
     const url = event.request.url;
-
+    if (url.endsWith("/login")) return;
     // ✅ FIX 1: Skip cross-origin requests entirely
     if (!url.startsWith(self.location.origin)) return;
 
