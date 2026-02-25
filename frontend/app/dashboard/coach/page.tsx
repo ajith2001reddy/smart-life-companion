@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+
 type Message = {
     role: "user" | "assistant";
     content: string;
@@ -99,7 +100,7 @@ export default function CoachPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ messages: updated }),
+                body: JSON.stringify({ messages: content }),
             });
 
             if (res.status === 401) {
