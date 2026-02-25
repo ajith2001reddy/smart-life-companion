@@ -3,8 +3,7 @@
 // Added: helmet, rate limiting, workout routes, coach memory,
 //        weekly report cron job
 // ============================================================
-const dns = require('dns');
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 require("dotenv").config();
 
 const express = require("express");
