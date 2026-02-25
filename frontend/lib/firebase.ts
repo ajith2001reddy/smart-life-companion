@@ -64,7 +64,7 @@ export async function signInWithGoogle() {
         throw new Error(data.error || "Backend authentication failed.");
     }
 
-    await signOut(firebaseAuth);
+
 
     return data;
 }
