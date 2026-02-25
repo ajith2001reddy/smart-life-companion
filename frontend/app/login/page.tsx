@@ -55,6 +55,7 @@ export default function LoginPage() {
 
     useEffect(() => {
         const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+            console.log("Auth state changed:", user);
             if (!user) return;
 
             try {
