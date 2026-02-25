@@ -36,12 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (token) {
-            setLoading(false);
-        } else {
-            setLoading(false);
+        const storedToken = localStorage.getItem("token");
+
+        if (storedToken) {
+            setToken(storedToken);
         }
-    }, [token]);
+
+        setLoading(false);
+    }, []);
 
     const login = (newToken: string) => {
         localStorage.setItem("token", newToken);
