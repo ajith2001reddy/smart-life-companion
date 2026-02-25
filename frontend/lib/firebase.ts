@@ -11,6 +11,8 @@ import {
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
     signOut,
+    signInWithRedirect,
+    getRedirectResult
 } from "firebase/auth";
 
 // ─────────────────────────────────────────────
@@ -45,7 +47,14 @@ googleProvider.setCustomParameters({
 // GOOGLE LOGIN — popup (works now that COOP is allow-popups)
 // ============================================================
 export async function signInWithGoogle() {
-    const result = await signInWithPopup(firebaseAuth, googleProvider);
+    await signInWithRedirect(firebaseAuth, googleProvider);
+}
+
+// Handle redirect result
+export async function handleGoogleRedirect() {
+    const result = await getRedirectResult(firebaseAuth);
+
+    if (!result) return null;
 
     const idToken = await result.user.getIdToken();
 
@@ -63,8 +72,6 @@ export async function signInWithGoogle() {
     if (!res.ok) {
         throw new Error(data.error || "Backend authentication failed.");
     }
-
-
 
     return data;
 }
