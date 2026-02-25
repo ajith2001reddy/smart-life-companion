@@ -22,21 +22,23 @@ export default function LoginPage() {
     // ─────────────────────────────────────────────
     useEffect(() => {
         setGLoading(true);
+        console.log("🔍 Checking redirect result...");
         handleGoogleRedirect()
             .then((data) => {
+                console.log("✅ Redirect result:", data);
                 if (data) {
                     login(data.token);
                     router.replace("/dashboard");
                 }
             })
             .catch((err: any) => {
+                console.error("❌ Redirect error:", err);
                 setError(err.message || "Google sign-in failed.");
             })
             .finally(() => {
                 setGLoading(false);
             });
     }, []);
-
     // ─────────────────────────────────────────────
     // Email / Password Login
     // ─────────────────────────────────────────────

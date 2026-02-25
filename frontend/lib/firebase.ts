@@ -57,7 +57,9 @@ export async function signInWithGoogle() {
 // redirect is in progress.
 // ============================================================
 export async function handleGoogleRedirect() {
+    console.log("🔍 getRedirectResult firing...");
     const result = await getRedirectResult(firebaseAuth);
+    console.log("🔍 result:", result);
     if (!result) return null;
 
     const idToken = await result.user.getIdToken();
