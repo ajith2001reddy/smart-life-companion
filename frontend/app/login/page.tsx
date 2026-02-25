@@ -19,37 +19,20 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-            if (!user) return;
-
+        const processRedirect = async () => {
             try {
-                const idToken = await user.getIdToken();
-
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ idToken }),
-                    }
-                );
-
-                const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.error || "Backend authentication failed.");
-                }
+                const data = await handleGoogleRedirect();
+                if (!data) return;
 
                 login(data.token);
-                unsubscribe(); // stop listening
                 router.replace("/dashboard");
 
             } catch (err) {
                 console.error("Redirect login failed:", err);
             }
-        });
+        };
 
-        return () => unsubscribe();
+        processRedirect();
     }, []);
 
     // ─────────────────────────────────────────────

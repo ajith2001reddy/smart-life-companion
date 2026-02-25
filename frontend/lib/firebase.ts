@@ -6,16 +6,17 @@ import { initializeApp, getApps } from "firebase/app";
 import {
     getAuth,
     GoogleAuthProvider,
-    signInWithPopup,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    setPersistence,
+    browserLocalPersistence,
     signOut,
     signInWithRedirect,
     getRedirectResult
 } from "firebase/auth";
 
-// ─────────────────────────────────────────────
+// ────────────────export const firebaseAuth = getAuth(app);─────────────────────────────
 // Firebase Config (from .env.local)
 // ─────────────────────────────────────────────
 const firebaseConfig = {
@@ -34,6 +35,13 @@ const app =
         : getApps()[0];
 
 export const firebaseAuth = getAuth(app);
+setPersistence(firebaseAuth, browserLocalPersistence)
+    .then(() => {
+        console.log("Firebase persistence set to LOCAL");
+    })
+    .catch((err) => {
+        console.error("Persistence error:", err);
+    });
 
 // ─────────────────────────────────────────────
 // Google Provider
@@ -54,7 +62,7 @@ export async function signInWithGoogle() {
 export async function handleGoogleRedirect() {
     const result = await getRedirectResult(firebaseAuth);
 
-    if (!result) return null;
+    if (!result || !result.user) return null;
 
     const idToken = await result.user.getIdToken();
 
