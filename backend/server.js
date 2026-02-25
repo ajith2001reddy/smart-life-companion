@@ -69,10 +69,22 @@ const aiLimiter = rateLimit({
 });
 
 /* ═══════════ STANDARD MIDDLEWARE ═══════════ */
-const allowedOrigin = "https://smart-life-companion.vercel.app";
+const allowedOrigins = [
+    "https://smart-life-companion.vercel.app",
+    "http://localhost:3000",
+    /^https:\/\/smart-life-companion-.*\.vercel\.app$/,  // all preview URLs
+];
 
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", allowedOrigin);
+    const origin = req.headers.origin;
+    const allowed = allowedOrigins.some((o) =>
+        typeof o === "string" ? o === origin : o.test(origin ?? "")
+    );
+
+    if (allowed) {
+        res.header("Access-Control-Allow-Origin", origin);
+    }
+
     res.header("Access-Control-Allow-Credentials", "true");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
