@@ -70,22 +70,18 @@ export default function LoginPage() {
                 );
 
                 const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.error || "Backend auth failed");
-                }
+                if (!res.ok) throw new Error(data.error);
 
                 login(data.token);
                 router.replace("/dashboard");
 
             } catch (err) {
-                console.error("Auth exchange failed:", err);
+                console.error("Backend exchange failed:", err);
             }
         });
 
         return () => unsubscribe();
     }, []);
-
     // ─────────────────────────────────────────────
     // Email / Password Login
     // ─────────────────────────────────────────────
