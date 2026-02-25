@@ -216,7 +216,9 @@ Rules:
             temperature: 0.7,
         });
 
-        const reply = completion.choices[0].message.content.trim();
+        const reply =
+            completion?.choices?.[0]?.message?.content?.trim() ||
+            "Sorry, I couldn't generate a response.";
 
         // Add assistant reply to history
         chatLog.messages.push({ role: "assistant", content: reply });
