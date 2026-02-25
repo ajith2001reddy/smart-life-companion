@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // frontend/lib/firebase.ts
 //
 // Handles:
@@ -87,19 +87,7 @@ googleProvider.setCustomParameters({
 // GOOGLE LOGIN
 // ============================================================
 export async function signInWithGoogle() {
-    let result: UserCredential;
-
-    try {
-        result = await signInWithRedirect(firebaseAuth, googleProvider);
-    } catch (err: any) {
-        if (err.code === "auth/popup-closed-by-user") {
-            throw new Error("Sign-in cancelled.");
-        }
-        if (err.code === "auth/popup-blocked") {
-            throw new Error("Popup blocked. Allow popups for this site.");
-        }
-        throw new Error(err.message || "Google sign-in failed.");
-    }
+    const result = await signInWithPopup(firebaseAuth, googleProvider);
 
     const idToken = await result.user.getIdToken();
 
@@ -120,7 +108,7 @@ export async function signInWithGoogle() {
 
     await signOut(firebaseAuth);
 
-    return data; // { token, userId }
+    return data;
 }
 
 // ============================================================
