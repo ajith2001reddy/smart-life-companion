@@ -12,12 +12,10 @@
 // ============================================================
 
 import { initializeApp, getApps } from "firebase/app";
-import { getRedirectResult } from "firebase/auth";
 import {
     getAuth,
     GoogleAuthProvider,
-
-    signInWithRedirect,
+    signInWithPopup,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
