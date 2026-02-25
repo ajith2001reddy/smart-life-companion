@@ -8,6 +8,8 @@ import {
     GoogleAuthProvider,
     signInWithRedirect,
     getRedirectResult,
+    browserLocalPersistence,
+    setPersistence,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
@@ -43,26 +45,31 @@ googleProvider.setCustomParameters({
 });
 
 // ============================================================
-// GOOGLE LOGIN — triggers a full-page redirect (no popup)
+// GOOGLE LOGIN — sets LOCAL persistence first, then redirects
+// (localStorage survives the redirect; sessionStorage does not)
 // ============================================================
 export async function signInWithGoogle() {
+    await setPersistence(firebaseAuth, browserLocalPersistence);
     await signInWithRedirect(firebaseAuth, googleProvider);
-    // Page navigates away — result handled by handleGoogleRedirect()
 }
 
 // ============================================================
 // HANDLE GOOGLE REDIRECT RESULT
-// Call this on mount of the login page.
-// Returns backend data (token, userId, etc.) or null if no
-// redirect is in progress.
 // ============================================================
 export async function handleGoogleRedirect() {
     console.log("🔍 getRedirectResult firing...");
+
     const result = await getRedirectResult(firebaseAuth);
+
     console.log("🔍 result:", result);
+
     if (!result) return null;
 
+    console.log("✅ Got user:", result.user.email);
+
     const idToken = await result.user.getIdToken();
+
+    console.log("✅ Got idToken, calling backend...");
 
     const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
@@ -74,6 +81,8 @@ export async function handleGoogleRedirect() {
     );
 
     const data = await res.json();
+
+    console.log("✅ Backend response:", res.status, data);
 
     if (!res.ok) {
         throw new Error(data.error || "Backend authentication failed.");
