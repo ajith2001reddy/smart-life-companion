@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, loginWithEmail, handleGoogleRedirect } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { firebaseAuth } from "@/lib/firebase";
 
 
 export default function LoginPage() {
@@ -17,24 +19,37 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
     useEffect(() => {
-        const processRedirect = async () => {
+        const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+            if (!user) return;
+
             try {
-                const data = await handleGoogleRedirect();
+                const idToken = await user.getIdToken();
 
-                if (!data) return;
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ idToken }),
+                    }
+                );
 
-                console.log("Redirect login success:", data);
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || "Backend authentication failed.");
+                }
 
                 login(data.token);
+                unsubscribe(); // stop listening
                 router.replace("/dashboard");
 
             } catch (err) {
                 console.error("Redirect login failed:", err);
-                setError("Google login failed.");
             }
-        };
+        });
 
-        processRedirect();
+        return () => unsubscribe();
     }, []);
 
     // ─────────────────────────────────────────────
