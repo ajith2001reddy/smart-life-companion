@@ -1,5 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { firebaseAuth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 import {
     createContext,
     useContext,
@@ -74,11 +76,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push("/dashboard"); // ✅ redirect properly
     };
 
-    const logout = () => {
+    const logout = async () => {
+        try {
+            await signOut(firebaseAuth); // 🔥 This is the missing piece
+        } catch (e) {
+            console.error("Firebase signout error:", e);
+        }
+
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
-        router.push("/login"); // ✅ no full reload
+        router.push("/login");
     };
 
     return (
