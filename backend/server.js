@@ -1,7 +1,6 @@
 ﻿// ============================================================
 // backend/server.js  (FULL REPLACEMENT)
-// Added: helmet, rate limiting, workout routes, coach memory,
-//        weekly report cron job
+// Added:
 // ============================================================
 
 require("dotenv").config();
