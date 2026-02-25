@@ -1,13 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
-import { handleGoogleRedirectResult } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -18,35 +15,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
-            if (!user) return;
-
-            try {
-                const idToken = await user.getIdToken();
-
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ idToken }),
-                    }
-                );
-
-                const data = await res.json();
-
-                if (res.ok && data.token) {
-                    login(data.token);
-                    router.replace("/dashboard");
-                }
-            } catch (err) {
-                console.error("Google login failed:", err);
-            }
-        });
-
-        return () => unsubscribe();
-    }, []);
+    
     // ─────────────────────────────────────────────
     // Email / Password Login (Firebase)
     // ─────────────────────────────────────────────
@@ -81,20 +50,23 @@ export default function LoginPage() {
     // Google Login
     // ─────────────────────────────────────────────
     const handleGoogle = async () => {
-        try {
-            setGLoading(true);
-            setError("");
+    try {
+        setGLoading(true);
+        setError("");
 
-            await signInWithGoogle(); // this redirects
+        const data = await signInWithGoogle();
 
-        } catch (err: any) {
-            if (err.message !== "Sign-in cancelled.") {
-                setError(err.message || "Google sign-in failed.");
-            }
-            setGLoading(false);
+        login(data.token);
+        router.replace("/dashboard");
+
+    } catch (err: any) {
+        if (err.message !== "Sign-in cancelled.") {
+            setError(err.message || "Google sign-in failed.");
         }
-    };
-
+    } finally {
+        setGLoading(false);
+    }
+};
     return (
         <div className="min-h-screen flex items-center justify-center bg-black text-white px-6">
             <motion.div
