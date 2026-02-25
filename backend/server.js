@@ -32,11 +32,13 @@ const ChatLog = require("./models/ChatLog");
 const auth = require("./middleware/auth");
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(cors({
     origin: "https://smart-life-companion.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
 }));
+
 
 
 

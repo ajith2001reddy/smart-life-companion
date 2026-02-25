@@ -25,13 +25,14 @@ const chatLogSchema = new mongoose.Schema(
 );
 
 // Trim to last 40 messages before saving
-chatLogSchema.pre("save", function (next) {
+chatLogSchema.pre("save", function () {
     const MAX = 40;
-    if (this.messages.length > MAX) {
+
+    if (Array.isArray(this.messages) && this.messages.length > MAX) {
         this.messages = this.messages.slice(-MAX);
     }
+
     this.updatedAt = new Date();
-    next();
 });
 
 module.exports = mongoose.model("ChatLog", chatLogSchema);
