@@ -110,6 +110,9 @@ export default function CoachPage() {
             }
 
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.error || "Server error");
+            }
             const full = data?.reply || "Sorry, something went wrong.";
             const aiTimestamp = new Date();
 
