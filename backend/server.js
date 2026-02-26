@@ -1,9 +1,4 @@
-﻿// ============================================================
-// backend/server.js  (FULL REPLACEMENT)
-// Added:
-// ============================================================
-
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -13,7 +8,6 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const cron = require("node-cron");
 
-// ── Routes ──────────────────────────────────────────────────
 const weatherRoute = require("./routes/weather");
 const dashboardRoute = require("./routes/dashboard");
 const nutritionRoute = require("./routes/nutrition");
@@ -22,36 +16,43 @@ const authRoute = require("./routes/auth");
 const foodScanRoute = require("./routes/foodScan");
 const workoutRoute = require("./routes/workout");
 
-// ── Models ──────────────────────────────────────────────────
 const Health = require("./models/health");
 const User = require("./models/User");
 const ChatLog = require("./models/ChatLog");
-
-// ── Middleware ───────────────────────────────────────────────
 const auth = require("./middleware/auth");
 
 const app = express();
 app.set("trust proxy", 1);
+
+// ✅ FIX: Accept your main domain + ANY Vercel preview deploy + localhost
 app.use(cors({
-    origin: "https://smart-life-companion.vercel.app",
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: function (origin, callback) {
+        const allowedExact = [
+            "https://smart-life-companion.vercel.app",
+            "http://localhost:3000",
+            "http://localhost:3001",
+        ];
+
+        // Allow requests with no origin (mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+
+        // Allow exact matches
+        if (allowedExact.includes(origin)) return callback(null, true);
+
+        // Allow ANY Vercel preview deploy (smart-life-companion-*.vercel.app)
+        if (origin.endsWith(".vercel.app")) return callback(null, true);
+
+        callback(new Error(`CORS blocked: ${origin}`));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
 }));
-//ajit??
 
-
-
-// Then your middleware
 app.use(express.json());
 
-/* ═══════════ DATABASE ═══════════ */
 const connectDB = require("./config/db");
-
 connectDB();
 
-/* ═══════════ SECURITY MIDDLEWARE ═══════════ */
-
-// Helmet sets secure HTTP headers
 app.use(
     helmet({
         crossOriginResourcePolicy: false,
@@ -59,7 +60,6 @@ app.use(
     })
 );
 
-// Global rate limiter — 100 requests per minute per IP
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 100,
@@ -69,7 +69,6 @@ const globalLimiter = rateLimit({
 });
 app.use(globalLimiter);
 
-// Stricter limiter for AI endpoints (OpenAI costs money)
 const aiLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 20,
@@ -78,9 +77,6 @@ const aiLimiter = rateLimit({
     message: { error: "AI rate limit reached. Try again in a minute." },
 });
 
-
-
-/* ═══════════ ROUTES ═══════════ */
 app.use("/api/weather", weatherRoute);
 app.use("/api/dashboard", dashboardRoute);
 app.use("/api/nutrition", nutritionRoute);
@@ -88,17 +84,19 @@ app.use("/api/health", healthRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/food-scan", foodScanRoute);
 app.use("/api/workout", workoutRoute);
-app.use("/uploads", express.static("uploads"));// ✅ NEW
+app.use("/uploads", express.static("uploads"));
 
-/* ═══════════ OPENAI ═══════════ */
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-/* ═══════════ HEALTH CHECK ═══════════ */
 app.get("/", (_req, res) => {
     res.json({ message: "Backend running successfully 🚀", timestamp: new Date() });
 });
 
-/* ═══════════ SMART PLAN (unchanged logic) ═══════════ */
+// ✅ Health check for Railway
+app.get("/api/ping", (_req, res) => {
+    res.json({ ok: true });
+});
+
 function generateSmartPlan(goal, days) {
     const templates = {
         "Lose fat": [
@@ -136,23 +134,12 @@ app.post("/api/generate-plan", aiLimiter, async (req, res) => {
 
         if (mode === "pro") {
             const prompt = `You are a professional fitness coach.
-
 Goal: ${goal}
 BMI: ${bmi}
 Days per week: ${days}
-
 Return ONLY valid JSON in this exact format:
-
-{
-  "Monday": [
-    { "name": "Exercise Name", "sets": 3, "reps": 10 }
-  ],
-  "Tuesday": []
-}
-
-Do NOT include explanations.
-Do NOT include markdown.
-Return JSON only.`;
+{ "Monday": [{ "name": "Exercise Name", "sets": 3, "reps": 10 }], "Tuesday": [] }
+Do NOT include explanations or markdown.`;
 
             const completion = await openai.chat.completions.create({
                 model: "gpt-4o-mini",
@@ -173,121 +160,51 @@ Return JSON only.`;
     }
 });
 
-/* ═══════════ AI COACH (with persistent memory) ═══════════ */
 app.post("/api/coach", aiLimiter, auth, async (req, res) => {
     try {
         const userId = req.user.userId;
-        const { message } = req.body; // single new message string
+        const { message } = req.body;
 
         if (!message) return res.status(400).json({ error: "message is required" });
 
-        // Load or create chat log
         let chatLog = await ChatLog.findOne({ userId });
         if (!chatLog) {
             chatLog = new ChatLog({ userId, messages: [] });
         }
 
-        // Fetch latest health data for context
         const latestHealth = await Health.findOne({ userId }).sort({ date: -1 });
         let healthContext = latestHealth
             ? `User Health Data: Steps=${latestHealth.steps}, HR=${latestHealth.heartRate}bpm, Sleep=${latestHealth.sleepHours}h, RestingHR=${latestHealth.restingHR}, Cals burned=${latestHealth.caloriesBurned}`
             : "No health data available.";
 
-        // Build messages array for OpenAI
         const systemPrompt = {
             role: "system",
-            content: `You are Smart Life AI Coach.
-${healthContext}
-Rules:
-- Keep responses short (2–4 sentences max)
-- No markdown
-- No bullet points
-- Speak conversationally
-- Give actionable advice
-- If health data shows poor recovery (sleep < 6h), reduce intensity
-- If recovery looks strong (sleep >= 7h, low resting HR), encourage performance`,
+            content: `You are Smart Life AI Coach. ${healthContext}. Be concise, motivating, and specific.`,
         };
 
-        // Add user message to history
         chatLog.messages.push({ role: "user", content: message });
+
+        const openaiMessages = [
+            systemPrompt,
+            ...chatLog.messages.slice(-20).map((m) => ({ role: m.role, content: m.content })),
+        ];
 
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
-            messages: [systemPrompt, ...chatLog.messages.map(m => ({ role: m.role, content: m.content }))],
-            temperature: 0.7,
+            messages: openaiMessages,
+            max_tokens: 500,
         });
 
-        const reply =
-            completion?.choices?.[0]?.message?.content?.trim() ||
-            "Sorry, I couldn't generate a response.";
-
-        // Add assistant reply to history
+        const reply = completion.choices[0].message.content;
         chatLog.messages.push({ role: "assistant", content: reply });
         await chatLog.save();
 
-        res.json({ message: reply });
+        res.json({ reply });
     } catch (error) {
-        console.error("Coach Error:", error);
-        res.status(500).json({ error: "AI failed" });
+        console.error("COACH ERROR:", error);
+        res.status(500).json({ error: "Coach request failed" });
     }
 });
 
-/* ═══════════ CLEAR COACH HISTORY ═══════════ */
-app.delete("/api/coach/history", auth, async (req, res) => {
-    try {
-        await ChatLog.findOneAndDelete({ userId: req.user.userId });
-        res.json({ message: "Chat history cleared" });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to clear history" });
-    }
-});
-
-/* ═══════════ GET COACH HISTORY ═══════════ */
-app.get("/api/coach/history", auth, async (req, res) => {
-    try {
-        const chatLog = await ChatLog.findOne({ userId: req.user.userId });
-        res.json(chatLog?.messages || []);
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch history" });
-    }
-});
-
-/* ═══════════ SCHEDULED WEEKLY REPORT (every Sunday 8am) ═══════════ */
-cron.schedule("0 8 * * 0", async () => {
-    console.log("📊 Running weekly report generation...");
-    try {
-        const users = await User.find({}).limit(100);
-        const since = new Date();
-        since.setDate(since.getDate() - 7);
-
-        for (const user of users) {
-            const recentHealth = await Health.find({
-                userId: user._id.toString(),
-                date: { $gte: since },
-            });
-
-            if (!recentHealth.length) continue;
-
-            const avgSteps = Math.round(
-                recentHealth.reduce((s, h) => s + h.steps, 0) / recentHealth.length
-            );
-            const avgSleep = (
-                recentHealth.reduce((s, h) => s + h.sleepHours, 0) / recentHealth.length
-            ).toFixed(1);
-
-            // Store summary in a simple log (extend to email via SendGrid/etc later)
-            console.log(
-                `📬 ${user.name}: avg ${avgSteps} steps/day, avg ${avgSleep}h sleep this week`
-            );
-        }
-        console.log("✅ Weekly reports done");
-    } catch (err) {
-        console.error("Cron error:", err);
-    }
-});
-
-/* ═══════════ START SERVER ═══════════ */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // 🔥 Validate token & load user
+    // Validate token & load user on mount
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
 
@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(data);
             })
             .catch(() => {
+                // Only clear token if it's actually invalid (401), not network errors
                 localStorage.removeItem("token");
                 setToken(null);
                 setUser(null);
@@ -70,15 +71,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .finally(() => setLoading(false));
     }, []);
 
+    // ✅ FIX: login() only saves the token — does NOT navigate.
+    // Navigation is handled by the page that calls login() (login/page.tsx)
+    // Having router.push here caused a double-navigation race condition.
     const login = (newToken: string) => {
         localStorage.setItem("token", newToken);
         setToken(newToken);
-        router.push("/dashboard"); // ✅ redirect properly
+        // DO NOT router.push here
     };
 
     const logout = async () => {
         try {
-            await signOut(firebaseAuth); // 🔥 This is the missing piece
+            await signOut(firebaseAuth);
         } catch (e) {
             console.error("Firebase signout error:", e);
         }
