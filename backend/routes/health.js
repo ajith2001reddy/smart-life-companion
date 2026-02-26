@@ -47,10 +47,10 @@ router.post("/shortcut", async (req, res) => {
         const newHealth = await Health.create({
             userId: user._id.toString(),
             steps: Number(steps) || 0,
-            heartRate: Number(heartRate) || 0,
-            sleepHours: Number(sleepHours) || 0,
-            restingHR: Number(restingHR) || 0,
-            caloriesBurned: Number(caloriesBurned) || 0,
+            heartRate: heartRate ? Math.round(Number(heartRate) * 10) / 10 : 0,
+            sleepHours: sleepHours ? Math.round(Number(sleepHours) * 10) / 10 : 0,
+            restingHR: restingHR ? Math.round(Number(restingHR) * 10) / 10 : 0,
+            caloriesBurned: caloriesBurned ? Math.round(Number(caloriesBurned) * 10) / 10 : 0,
             date: new Date(),
         });
 
