@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import type { Variants } from "framer-motion";
 
@@ -55,6 +56,7 @@ function blankExercise(): ExerciseEntry {
 
 export default function WorkoutPage() {
     const { token } = useAuth();
+    const router = useRouter();
     const base = process.env.NEXT_PUBLIC_API_URL;
 
     const [activeTab, setActiveTab] = useState<"log" | "history">("log");
@@ -68,10 +70,32 @@ export default function WorkoutPage() {
     const [saved, setSaved] = useState(false);
     const [error, setError] = useState("");
 
+    // ✅ NEW: banner shown when pre-filled from plan
+    const [fromPlan, setFromPlan] = useState(false);
+
     // History
     const [history, setHistory] = useState<WorkoutLog[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+
+    // ✅ NEW: On mount, check if plan page left a prefill in localStorage
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem("smartlife-workout-prefill");
+            if (raw) {
+                const prefill = JSON.parse(raw);
+                if (prefill.workoutName) setWorkoutName(prefill.workoutName);
+                if (Array.isArray(prefill.exercises) && prefill.exercises.length > 0) {
+                    setExercises(prefill.exercises);
+                }
+                setFromPlan(true);
+                // Clear immediately so refreshing the page doesn't re-apply it
+                localStorage.removeItem("smartlife-workout-prefill");
+            }
+        } catch {
+            // ignore corrupt localStorage
+        }
+    }, []);
 
     // Load history when tab switches
     useEffect(() => {
@@ -134,6 +158,7 @@ export default function WorkoutPage() {
             });
             if (!res.ok) throw new Error((await res.json()).error || "Save failed");
             setSaved(true);
+            setFromPlan(false);
             setTimeout(() => {
                 setSaved(false);
                 // Reset form
@@ -151,11 +176,13 @@ export default function WorkoutPage() {
 
     async function handleDelete(id: string) {
         try {
-            await fetch(`${base}/api/workout/${id}`, {
+            const res = await fetch(`${base}/api/workout/${id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setHistory((prev) => prev.filter((w) => w._id !== id));
+            if (res.ok) {
+                setHistory((prev) => prev.filter((w) => w._id !== id));
+            }
         } catch {
             // silent
         } finally {
@@ -163,191 +190,232 @@ export default function WorkoutPage() {
         }
     }
 
-    // ── Render ───────────────────────────────────────────────
-
     return (
-        <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6 max-w-4xl mx-auto">
+        <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
 
-            {/* Header */}
-            <motion.div variants={fadeUp}>
-                <p className="text-[#c8ff00] text-xs tracking-widest uppercase mb-2">Training</p>
-                <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Workout Log</h1>
-            </motion.div>
-
-            {/* Tabs */}
+            {/* ── TAB BAR ── */}
             <motion.div variants={fadeUp} className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
                 {(["log", "history"] as const).map((tab) => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-5 py-2 rounded-xl text-sm font-medium transition-all capitalize ${activeTab === tab ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"
-                            }`}
+                        className={`px-5 py-2 rounded-xl text-sm font-medium transition-all capitalize ${activeTab === tab ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70"}`}
                     >
-                        {tab === "log" ? "📝 Log Workout" : "📅 History"}
+                        {tab === "log" ? "🏋️ Log Workout" : "📜 History"}
                     </button>
                 ))}
             </motion.div>
 
             <AnimatePresence mode="wait">
 
-                {/* ── LOG TAB ─────────────────────────────── */}
+                {/* ── LOG TAB ── */}
                 {activeTab === "log" && (
                     <motion.div
                         key="log"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
+                        variants={stagger}
+                        initial="hidden"
+                        animate="show"
+                        exit={{ opacity: 0 }}
                         className="space-y-5"
                     >
-                        {/* Session info */}
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-5">
-                            <h3 className="text-xs text-white/40 uppercase tracking-widest">Session Details</h3>
 
+                        {/* ✅ NEW: Banner when prefilled from plan */}
+                        {fromPlan && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-[#c8ff00]/10 border border-[#c8ff00]/20"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[#c8ff00] text-lg">📋</span>
+                                    <div>
+                                        <p className="text-sm font-semibold text-[#c8ff00]">Pre-filled from your plan</p>
+                                        <p className="text-xs text-white/50 mt-0.5">Add weights, adjust sets/reps, then save to log it.</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setFromPlan(false)}
+                                    className="text-white/30 hover:text-white text-lg shrink-0"
+                                >
+                                    ✕
+                                </button>
+                            </motion.div>
+                        )}
+
+                        {/* Workout name + duration */}
+                        <motion.div
+                            variants={fadeUp}
+                            className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-7 space-y-5"
+                        >
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Workout Name</label>
                                     <input
+                                        type="text"
+                                        placeholder="e.g. Push Day"
                                         value={workoutName}
                                         onChange={(e) => setWorkoutName(e.target.value)}
-                                        placeholder="e.g. Push Day, Leg Day..."
-                                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/50 transition text-sm placeholder:text-white/20"
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition placeholder:text-white/20"
                                     />
                                 </div>
                                 <div>
                                     <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Duration (minutes)</label>
                                     <input
                                         type="number"
+                                        min={1}
                                         value={durationMinutes}
                                         onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                                        min={10} max={300}
-                                        className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/50 transition text-sm"
+                                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition"
                                     />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
 
-                        {/* Exercises */}
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-xs text-white/40 uppercase tracking-widest">Exercises</h3>
-                                <motion.button
-                                    whileHover={{ scale: 1.04 }}
-                                    whileTap={{ scale: 0.97 }}
-                                    onClick={addExercise}
-                                    className="text-xs px-4 py-2 rounded-xl bg-[#c8ff00]/10 border border-[#c8ff00]/25 text-[#c8ff00] hover:bg-[#c8ff00]/20 transition"
-                                >
-                                    + Add Exercise
-                                </motion.button>
+                        {/* Exercise list */}
+                        <motion.div
+                            variants={fadeUp}
+                            className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-7 space-y-4"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <h2 className="text-sm font-semibold text-white/80">Exercises</h2>
+                                <span className="text-xs text-white/30">{exercises.filter(e => e.name).length} logged</span>
                             </div>
 
-                            <div className="space-y-3">
-                                <AnimatePresence>
-                                    {exercises.map((ex, index) => (
-                                        <motion.div
-                                            key={ex.id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, x: -20 }}
-                                            className="bg-white/4 border border-white/8 rounded-2xl p-4 space-y-3"
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-xs text-white/30 font-mono">#{index + 1}</span>
-                                                {exercises.length > 1 && (
-                                                    <button
-                                                        onClick={() => removeExercise(ex.id)}
-                                                        className="text-xs text-white/20 hover:text-red-400 transition"
-                                                    >
-                                                        ✕ Remove
-                                                    </button>
-                                                )}
-                                            </div>
-
+                            <AnimatePresence>
+                                {exercises.map((ex, idx) => (
+                                    <motion.div
+                                        key={ex.id}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="rounded-2xl bg-white/3 border border-white/8 p-4 space-y-3"
+                                    >
+                                        {/* Exercise header */}
+                                        <div className="flex items-center gap-3">
+                                            <span className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] text-white/30 font-mono shrink-0">
+                                                {String(idx + 1).padStart(2, "0")}
+                                            </span>
                                             <input
+                                                type="text"
+                                                placeholder="Exercise name"
                                                 value={ex.name}
                                                 onChange={(e) => updateExercise(ex.id, "name", e.target.value)}
-                                                placeholder="Exercise name (e.g. Bench Press)"
-                                                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/40 transition text-sm placeholder:text-white/20"
+                                                className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/20 border-b border-white/10 pb-1 focus:border-[#c8ff00]/40 transition"
                                             />
+                                            <button
+                                                onClick={() => removeExercise(ex.id)}
+                                                className="text-white/20 hover:text-red-400 transition text-sm shrink-0"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
 
-                                            <div className="grid grid-cols-3 gap-3">
-                                                {[
-                                                    { label: "Sets", field: "sets" as const, placeholder: "3" },
-                                                    { label: "Reps", field: "reps" as const, placeholder: "10" },
-                                                    { label: "kg", field: "weight" as const, placeholder: "0" },
-                                                ].map((f) => (
-                                                    <div key={f.field}>
-                                                        <label className="text-[10px] text-white/30 uppercase tracking-wider mb-1 block">{f.label}</label>
-                                                        <input
-                                                            type="number"
-                                                            value={ex[f.field]}
-                                                            onChange={(e) => updateExercise(ex.id, f.field, Number(e.target.value))}
-                                                            placeholder={f.placeholder}
-                                                            min={0}
-                                                            className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition"
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
+                                        {/* Sets / Reps / Weight */}
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {(["sets", "reps", "weight"] as const).map((field) => (
+                                                <div key={field}>
+                                                    <label className="text-[10px] text-white/30 uppercase tracking-widest mb-1 block">
+                                                        {field}{field === "weight" ? " (kg)" : ""}
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        value={ex[field]}
+                                                        onChange={(e) => updateExercise(ex.id, field, Number(e.target.value))}
+                                                        className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition text-center tabular-nums"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
 
-                                            <input
-                                                value={ex.notes}
-                                                onChange={(e) => updateExercise(ex.id, "notes", e.target.value)}
-                                                placeholder="Notes (optional)"
-                                                className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/70 text-xs outline-none focus:border-white/20 transition placeholder:text-white/15"
-                                            />
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        </div>
+                                        {/* Notes */}
+                                        <input
+                                            type="text"
+                                            placeholder="Notes (optional)"
+                                            value={ex.notes}
+                                            onChange={(e) => updateExercise(ex.id, "notes", e.target.value)}
+                                            className="w-full bg-transparent text-white/50 text-xs outline-none placeholder:text-white/20 border-b border-white/5 pb-1 focus:border-white/20 transition"
+                                        />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
 
-                        {/* Session notes */}
-                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8">
-                            <h3 className="text-xs text-white/40 uppercase tracking-widest mb-3">Session Notes</h3>
+                            <button
+                                onClick={addExercise}
+                                className="w-full py-3 rounded-2xl border border-dashed border-white/15 text-white/40 hover:text-white hover:border-white/30 transition text-sm flex items-center justify-center gap-2"
+                            >
+                                + Add Exercise
+                            </button>
+                        </motion.div>
+
+                        {/* Workout notes */}
+                        <motion.div variants={fadeUp} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-7">
+                            <label className="text-xs text-white/40 uppercase tracking-widest mb-3 block">Session Notes</label>
                             <textarea
+                                rows={3}
+                                placeholder="How did it feel? Any PRs?"
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                placeholder="How did it go? Any PRs or observations..."
-                                rows={3}
-                                className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-[#c8ff00]/50 transition text-sm placeholder:text-white/20 resize-none"
+                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition placeholder:text-white/20 resize-none"
                             />
-                        </div>
+                        </motion.div>
 
-                        {error && <p className="text-sm text-red-400">{error}</p>}
+                        {/* Save button */}
+                        <motion.div variants={fadeUp}>
+                            {error && (
+                                <p className="text-red-400 text-xs mb-3">{error}</p>
+                            )}
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={handleSave}
+                                disabled={saving || saved}
+                                className="w-full py-4 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+                            >
+                                {saving ? (
+                                    <>
+                                        <motion.div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full" animate={{ rotate: 360 }} transition={{ duration: 0.6, repeat: Infinity }} />
+                                        Saving...
+                                    </>
+                                ) : saved ? "✓ Workout Saved!" : "Save Workout"}
+                            </motion.button>
 
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="bg-[#c8ff00] text-black px-10 py-3.5 rounded-2xl font-bold text-sm disabled:opacity-50 w-full sm:w-auto"
-                        >
-                            {saved ? "✓ Workout Saved!" : saving ? "Saving..." : "Log Workout"}
-                        </motion.button>
+                            {saved && (
+                                <motion.p
+                                    initial={{ opacity: 0, y: 4 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="text-center text-xs text-white/40 mt-3"
+                                >
+                                    Your workout has been logged — head to <span className="text-[#c8ff00]">Analytics</span> to see your progress.
+                                </motion.p>
+                            )}
+                        </motion.div>
                     </motion.div>
                 )}
 
-                {/* ── HISTORY TAB ─────────────────────────────── */}
+                {/* ── HISTORY TAB ── */}
                 {activeTab === "history" && (
                     <motion.div
                         key="history"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         className="space-y-4"
                     >
                         {historyLoading ? (
-                            <div className="flex justify-center py-16">
+                            <div className="flex items-center justify-center h-40">
                                 <motion.div
-                                    className="w-10 h-10 border-2 border-[#c8ff00] border-t-transparent rounded-full"
+                                    className="w-8 h-8 border-2 border-[#c8ff00] border-t-transparent rounded-full"
                                     animate={{ rotate: 360 }}
-                                    transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                                    transition={{ duration: 0.8, repeat: Infinity }}
                                 />
                             </div>
                         ) : history.length === 0 ? (
-                            <div className="text-center py-16 text-white/30">
-                                <p className="text-4xl mb-3">🏋️</p>
-                                <p className="text-sm">No workouts logged yet. Start your first session!</p>
+                            <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
+                                <p className="text-4xl mb-4">🏋️</p>
+                                <p className="text-white/40 text-sm">No workouts logged yet.</p>
+                                <p className="text-white/25 text-xs mt-1">Switch to the Log tab or use your Plan to get started.</p>
                             </div>
                         ) : (
                             history.map((workout) => (

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { generatePlan } from "@/lib/api";
 import GlassSelect from "@/components/GlassSelect";
 
@@ -28,7 +29,6 @@ const DAY_COLORS: Record<string, string> = {
     Sunday: "#ffffff30",
 };
 
-// Rest day suggestions based on goal + day count
 function getRestDaySuggestion(goal: string, days: number): string {
     if (days <= 3) return "With 3 days of training, you have plenty of recovery time. Consider active rest: walking or light stretching on off days.";
     if (days === 4 && goal === "Lose fat") return "4-day split detected. Ideal: rest Wednesday and Sunday to allow lower body recovery.";
@@ -38,6 +38,8 @@ function getRestDaySuggestion(goal: string, days: number): string {
 }
 
 export default function PlanPage() {
+    const router = useRouter();
+
     const [goal, setGoal] = useState("Lose fat");
     const [days, setDays] = useState(3);
     const [mode, setMode] = useState<"smart" | "pro">("smart");
@@ -46,7 +48,6 @@ export default function PlanPage() {
     const [activeDay, setActiveDay] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<"plan" | "history">("plan");
 
-    // Saved plan history
     const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => {
         try { return JSON.parse(localStorage.getItem("smartlife-plans") || "[]"); } catch { return []; }
     });
@@ -54,7 +55,6 @@ export default function PlanPage() {
     const [planLabel, setPlanLabel] = useState("");
     const [showSaveModal, setShowSaveModal] = useState(false);
 
-    // Drag-to-reorder state per day
     const [dayExercises, setDayExercises] = useState<Record<string, Exercise[]>>({});
 
     async function handleGenerate() {
@@ -63,7 +63,6 @@ export default function PlanPage() {
         try {
             const res = await generatePlan({ mode, goal, days, bmi: 24 });
             setPlan(res.plan);
-            // Init reorderable exercises
             const init: Record<string, Exercise[]> = {};
             Object.keys(res.plan).forEach((d) => { init[d] = [...res.plan[d]]; });
             setDayExercises(init);
@@ -111,42 +110,79 @@ export default function PlanPage() {
         localStorage.setItem("smartlife-plans", JSON.stringify(updated));
     }
 
+    // ✅ NEW: Pass selected day's exercises to workout page via localStorage
+    function handleStartWorkout(day: string) {
+        const exercises = dayExercises[day] ?? plan?.[day] ?? [];
+        if (!exercises.length) return;
+
+        const prefill = {
+            workoutName: `${day} – ${goal}`,
+            exercises: exercises.map((ex) => ({
+                id: crypto.randomUUID(),
+                name: ex.name,
+                sets: ex.sets,
+                reps: ex.reps,
+                weight: 0,
+                notes: "",
+            })),
+        };
+
+        localStorage.setItem("smartlife-workout-prefill", JSON.stringify(prefill));
+        router.push("/dashboard/workout");
+    }
+
     const restSuggestion = getRestDaySuggestion(goal, days);
     const currentExercises = activeDay ? (dayExercises[activeDay] ?? plan?.[activeDay] ?? []) : [];
 
     return (
         <div className="space-y-8 sm:space-y-10">
 
-            {/* ── HEADER ── */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-                <p className="text-[#c8ff00] text-xs tracking-widest uppercase mb-2">AI Training System</p>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Training Plan</h1>
-            </motion.div>
-
-            {/* ── CONFIG CARD ── */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8">
-                <h2 className="text-xs sm:text-sm text-white/50 uppercase tracking-widest mb-6">Configure Plan</h2>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    <GlassSelect label="Goal" value={goal} onChange={setGoal} options={[
-                        { label: "Lose fat", value: "Lose fat" },
-                        { label: "Gain muscle", value: "Gain muscle" },
-                        { label: "Maintain", value: "Maintain" },
-                    ]} />
-                    <GlassSelect label="Days / Week" value={days} onChange={(v) => setDays(Number(v))} options={[3, 4, 5, 6].map((n) => ({ label: `${n} days`, value: n }))} />
-                    <GlassSelect label="Mode" value={mode} onChange={(v) => setMode(v as any)} options={[
-                        { label: "⚡ Smart", value: "smart" },
-                        { label: "🤖 Pro AI", value: "pro" },
-                    ]} />
+            {/* ── CONFIG PANEL ── */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-6"
+            >
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-1">AI Workout Plan</h1>
+                    <p className="text-white/40 text-sm">Generate a personalised weekly training plan, then launch any day straight into your Workout log.</p>
                 </div>
 
-                {/* ── NEW: Rest Day Suggestion ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <GlassSelect
+                        label="Fitness Goal"
+                        options={[
+                            { label: "Lose fat", value: "Lose fat" },
+                            { label: "Gain muscle", value: "Gain muscle" },
+                            { label: "Maintain", value: "Maintain" },
+                        ]}
+                        value={goal}
+                        onChange={setGoal}
+                    />
+                    <GlassSelect
+                        label="Days per week"
+                        options={[3, 4, 5, 6].map((d) => ({ label: `${d} days`, value: d }))}
+                        value={days}
+                        onChange={setDays}
+                    />
+                    <GlassSelect
+                        label="Plan Mode"
+                        options={[
+                            { label: "⚡ Smart (instant)", value: "smart" },
+                            { label: "🤖 Pro AI (GPT-4o)", value: "pro" },
+                        ]}
+                        value={mode}
+                        onChange={setMode}
+                    />
+                </div>
+
+                {/* Rest tip */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-blue-500/8 border border-blue-400/15 mb-6"
+                    className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-blue-500/5 border border-blue-400/10"
                 >
-                    <span className="text-lg mt-0.5">😴</span>
+                    <span className="text-blue-300 text-lg mt-0.5">💡</span>
                     <div>
                         <p className="text-[10px] text-blue-300/60 uppercase tracking-widest mb-1">Recovery Tip</p>
                         <p className="text-sm text-white/50 leading-relaxed">{restSuggestion}</p>
@@ -179,7 +215,7 @@ export default function PlanPage() {
                 {plan && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
 
-                        {/* Tabs: Plan / History */}
+                        {/* Tabs row */}
                         <div className="flex items-center justify-between gap-4">
                             <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
                                 {([
@@ -196,7 +232,6 @@ export default function PlanPage() {
                                 ))}
                             </div>
 
-                            {/* Save button */}
                             {activeTab === "plan" && (
                                 <motion.button
                                     whileHover={{ scale: 1.03 }}
@@ -209,10 +244,11 @@ export default function PlanPage() {
                             )}
                         </div>
 
-                        {/* ── CURRENT PLAN VIEW ── */}
+                        {/* ── PLAN VIEW ── */}
                         {activeTab === "plan" && (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                                {/* Day Tabs */}
+
+                                {/* Day tabs */}
                                 <div className="flex flex-wrap gap-2">
                                     {Object.keys(plan).map((day) => (
                                         <button
@@ -227,9 +263,14 @@ export default function PlanPage() {
                                     ))}
                                 </div>
 
-                                {/* Active Day */}
+                                {/* Active day card */}
                                 {activeDay && (
-                                    <motion.div key={activeDay} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8">
+                                    <motion.div
+                                        key={activeDay}
+                                        initial={{ opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8"
+                                    >
                                         <div className="flex items-center gap-3 mb-6">
                                             <div className="w-2 h-8 rounded-full" style={{ background: DAY_COLORS[activeDay] || "#c8ff00" }} />
                                             <h2 className="text-lg sm:text-xl font-bold">{activeDay}</h2>
@@ -247,48 +288,59 @@ export default function PlanPage() {
                                                 <p className="text-white/40 text-sm">Rest day — focus on recovery, mobility, and nutrition.</p>
                                             </div>
                                         ) : (
-                                            // ── NEW: Drag-to-reorder exercises ──
-                                            <Reorder.Group
-                                                axis="y"
-                                                values={currentExercises}
-                                                onReorder={(newOrder) => {
-                                                    setDayExercises((prev) => ({ ...prev, [activeDay]: newOrder }));
-                                                }}
-                                                className="space-y-2"
-                                            >
-                                                {currentExercises.map((ex, i) => (
-                                                    <Reorder.Item
-                                                        key={ex.name + i}
-                                                        value={ex}
-                                                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 px-4 rounded-2xl bg-white/3 border border-white/6 hover:bg-white/5 hover:border-white/10 transition-colors cursor-grab active:cursor-grabbing"
-                                                        whileDrag={{ scale: 1.02, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
-                                                    >
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="flex flex-col gap-0.5 opacity-25 hover:opacity-50 transition shrink-0">
-                                                                <div className="w-4 h-0.5 bg-white rounded" />
-                                                                <div className="w-4 h-0.5 bg-white rounded" />
-                                                                <div className="w-4 h-0.5 bg-white rounded" />
+                                            <>
+                                                <Reorder.Group
+                                                    axis="y"
+                                                    values={currentExercises}
+                                                    onReorder={(newOrder) => {
+                                                        setDayExercises((prev) => ({ ...prev, [activeDay]: newOrder }));
+                                                    }}
+                                                    className="space-y-2"
+                                                >
+                                                    {currentExercises.map((ex, i) => (
+                                                        <Reorder.Item
+                                                            key={ex.name + i}
+                                                            value={ex}
+                                                            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 px-4 rounded-2xl bg-white/3 border border-white/6 hover:bg-white/5 hover:border-white/10 transition-colors cursor-grab active:cursor-grabbing"
+                                                            whileDrag={{ scale: 1.02, boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}
+                                                        >
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="flex flex-col gap-0.5 opacity-25 hover:opacity-50 transition shrink-0">
+                                                                    <div className="w-4 h-0.5 bg-white rounded" />
+                                                                    <div className="w-4 h-0.5 bg-white rounded" />
+                                                                    <div className="w-4 h-0.5 bg-white rounded" />
+                                                                </div>
+                                                                <span className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs text-white/40 font-mono shrink-0">
+                                                                    {String(i + 1).padStart(2, "0")}
+                                                                </span>
+                                                                <span className="font-medium text-sm sm:text-base">{ex.name}</span>
                                                             </div>
-                                                            <span className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-xs text-white/40 font-mono shrink-0">
-                                                                {String(i + 1).padStart(2, "0")}
-                                                            </span>
-                                                            <span className="font-medium text-sm sm:text-base">{ex.name}</span>
-                                                        </div>
-                                                        <div className="ml-14 sm:ml-0">
-                                                            <span className="text-sm px-3 py-1.5 rounded-lg bg-white/5 text-white/60 font-mono">
-                                                                {ex.sets} × {ex.reps}
-                                                            </span>
-                                                        </div>
-                                                    </Reorder.Item>
-                                                ))}
-                                            </Reorder.Group>
+                                                            <div className="ml-14 sm:ml-0">
+                                                                <span className="text-sm px-3 py-1.5 rounded-lg bg-white/5 text-white/60 font-mono">
+                                                                    {ex.sets} × {ex.reps}
+                                                                </span>
+                                                            </div>
+                                                        </Reorder.Item>
+                                                    ))}
+                                                </Reorder.Group>
+
+                                                {/* ✅ NEW: Start Workout button */}
+                                                <motion.button
+                                                    whileHover={{ scale: 1.02 }}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={() => handleStartWorkout(activeDay)}
+                                                    className="mt-6 w-full py-3.5 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm flex items-center justify-center gap-2"
+                                                >
+                                                    🏋️ Start {activeDay} Workout
+                                                </motion.button>
+                                            </>
                                         )}
                                     </motion.div>
                                 )}
                             </motion.div>
                         )}
 
-                        {/* ── NEW: HISTORY TAB ── */}
+                        {/* ── HISTORY TAB ── */}
                         {activeTab === "history" && (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
                                 {savedPlans.length === 0 ? (
@@ -324,7 +376,10 @@ export default function PlanPage() {
                                                 >
                                                     Load
                                                 </motion.button>
-                                                <button onClick={() => deleteSavedPlan(saved.id)} className="px-3 py-2 rounded-xl border border-white/10 text-white/25 hover:text-red-400 hover:border-red-400/30 transition text-xs">
+                                                <button
+                                                    onClick={() => deleteSavedPlan(saved.id)}
+                                                    className="px-3 py-2 rounded-xl border border-white/10 text-white/25 hover:text-red-400 hover:border-red-400/30 transition text-xs"
+                                                >
                                                     Delete
                                                 </button>
                                             </div>
