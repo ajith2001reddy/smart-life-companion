@@ -91,6 +91,48 @@ function trendLabel(v: number) {
         : { text: `↓ ${Math.abs(v)}%`, color: "text-[#ff4d6d]" };
 }
 
+/** Compute stats from a history array (used for custom date range) */
+function computeStats(records: HealthData[]): Stats | null {
+    if (!records.length) return null;
+    const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const max = (arr: number[]) => arr.length ? Math.max(...arr) : 0;
+
+    const steps = records.map((r) => r.steps);
+    const hr = records.map((r) => r.heartRate).filter((v) => v > 0);
+    const sleep = records.map((r) => r.sleepHours).filter((v) => v > 0);
+    const cals = records.map((r) => r.caloriesBurned).filter((v) => v > 0);
+
+    const mid = Math.floor(records.length / 2);
+    const trend = (key: keyof HealthData) => {
+        const fh = records.slice(0, mid).map((r) => r[key] as number).filter((v) => v > 0);
+        const sh = records.slice(mid).map((r) => r[key] as number).filter((v) => v > 0);
+        const a = avg(fh), b = avg(sh);
+        return a === 0 ? 0 : Math.round(((b - a) / a) * 100);
+    };
+
+    return {
+        totalRecords: records.length,
+        period: 0,
+        averages: {
+            steps: Math.round(avg(steps)),
+            heartRate: Math.round(avg(hr)),
+            sleepHours: Math.round(avg(sleep) * 10) / 10,
+            caloriesBurned: Math.round(avg(cals)),
+        },
+        bests: {
+            steps: max(steps),
+            sleepHours: max(sleep),
+            caloriesBurned: max(cals),
+        },
+        trends: {
+            steps: trend("steps"),
+            heartRate: trend("heartRate"),
+            sleepHours: trend("sleepHours"),
+            caloriesBurned: trend("caloriesBurned"),
+        },
+    };
+}
+
 /* ─── Readiness Arc ─── */
 function ReadinessArc({ score }: { score: number }) {
     const r = 70, cx = 100, cy = 90;
@@ -133,6 +175,7 @@ export default function HealthPage() {
 
     const [latest, setLatest] = useState<HealthData | null>(null);
     const [history, setHistory] = useState<HealthData[]>([]);
+    const [allHistory, setAllHistory] = useState<HealthData[]>([]); // full unfiltered data
     const [stats, setStats] = useState<Stats | null>(null);
     const [readiness, setReadiness] = useState<Readiness | null>(null);
 
@@ -148,7 +191,13 @@ export default function HealthPage() {
     const [activeTab, setActiveTab] = useState<"overview" | "charts" | "history" | "journal" | "export">("overview");
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
-    // ── NEW: Symptom Journal ──
+    // ── Custom date range ──
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [customFrom, setCustomFrom] = useState("");
+    const [customTo, setCustomTo] = useState("");
+    const [isCustomRange, setIsCustomRange] = useState(false);
+
+    // ── Symptom Journal ──
     const [symptoms, setSymptoms] = useState<SymptomEntry[]>([]);
     const [journalOpen, setJournalOpen] = useState(false);
     const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -156,7 +205,7 @@ export default function HealthPage() {
     const [symptomSeverity, setSymptomSeverity] = useState<1 | 2 | 3>(2);
     const [journalSaved, setJournalSaved] = useState(false);
 
-    // ── NEW: Export ──
+    // ── Export ──
     const [exportLoading, setExportLoading] = useState(false);
 
     const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
@@ -167,31 +216,100 @@ export default function HealthPage() {
         if (saved) setSymptoms(JSON.parse(saved));
     }, []);
 
+    // ── Fetch from API ──
     const load = useCallback(async () => {
         if (!token) return;
         setLoading(true);
         try {
-            const rangeParam = dateRange > 0 ? `?days=${dateRange}` : "";
+            // Always fetch "all" data so we can filter custom ranges client-side
             const [l, h, r, s] = await Promise.all([
                 fetch(`${base}/api/health/latest`, { headers }).then((res) =>
                     res.status === 401 ? (logout(), null) : res.json()
                 ),
-                fetch(`${base}/api/health/history${rangeParam}`, { headers }).then((r) => r.json()),
+                fetch(`${base}/api/health/history`, { headers }).then((r) => r.json()),  // fetch ALL
                 fetch(`${base}/api/health/readiness`, { headers }).then((r) => r.json()),
-                fetch(`${base}/api/health/stats${rangeParam}`, { headers }).then((r) => r.json()),
+                fetch(`${base}/api/health/stats?days=${dateRange > 0 ? dateRange : 0}`, { headers }).then((r) => r.json()),
             ]);
             setLatest(l);
-            setHistory(Array.isArray(h) ? h : []);
+            const all = Array.isArray(h) ? h : [];
+            setAllHistory(all);
             setReadiness(r);
             setStats(s);
+
+            // Apply the correct filter immediately
+            if (isCustomRange && customFrom && customTo) {
+                applyCustomFilter(all, customFrom, customTo);
+            } else {
+                applyPresetFilter(all, dateRange, s);
+            }
         } catch (err) {
             console.error("Health load failed", err);
         } finally {
             setLoading(false);
         }
-    }, [token, dateRange]);
+    }, [token, dateRange]);  // eslint-disable-line
 
     useEffect(() => { load(); }, [load]);
+
+    // ── Filter helpers ──
+    function applyPresetFilter(all: HealthData[], range: DateRange, serverStats: Stats | null) {
+        if (range === 0) {
+            setHistory(all);
+            setStats(serverStats);
+            return;
+        }
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - range);
+        const filtered = all.filter((h) => new Date(h.date) >= cutoff);
+        setHistory(filtered);
+        setStats(serverStats);
+    }
+
+    function applyCustomFilter(all: HealthData[], from: string, to: string) {
+        if (!from || !to) return;
+        const fromDate = new Date(from);
+        fromDate.setHours(0, 0, 0, 0);
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        const filtered = all.filter((h) => {
+            const d = new Date(h.date);
+            return d >= fromDate && d <= toDate;
+        });
+        setHistory(filtered);
+        const computed = computeStats(filtered);
+        setStats(computed ? { ...computed } : null);
+    }
+
+    // ── When preset button clicked ──
+    function handlePresetRange(range: DateRange) {
+        setDateRange(range);
+        setIsCustomRange(false);
+        setShowDatePicker(false);
+        setCustomFrom("");
+        setCustomTo("");
+        applyPresetFilter(allHistory, range, stats);
+    }
+
+    // ── Apply custom date filter ──
+    function handleApplyCustom() {
+        if (!customFrom || !customTo) return;
+        if (new Date(customFrom) > new Date(customTo)) {
+            setMsg("'From' date must be before 'To' date.");
+            setTimeout(() => setMsg(""), 2500);
+            return;
+        }
+        setIsCustomRange(true);
+        setShowDatePicker(false);
+        applyCustomFilter(allHistory, customFrom, customTo);
+    }
+
+    // ── Clear custom filter ──
+    function clearCustomRange() {
+        setIsCustomRange(false);
+        setCustomFrom("");
+        setCustomTo("");
+        handlePresetRange(30);
+    }
 
     async function handleSync() {
         setSyncing(true);
@@ -229,7 +347,7 @@ export default function HealthPage() {
         }
     }
 
-    // ── NEW: Save symptom journal entry ──
+    // ── Symptom Journal ──
     function saveSymptom() {
         if (selectedTags.length === 0 && !symptomNote.trim()) return;
         const entry: SymptomEntry = {
@@ -255,11 +373,11 @@ export default function HealthPage() {
         localStorage.setItem("smartlife-symptoms", JSON.stringify(updated));
     }
 
-    // ── NEW: Export CSV ──
+    // ── Export CSV ──
     function exportCSV() {
         if (history.length === 0) return;
         setExportLoading(true);
-        const headers = ["Date", "Steps", "Heart Rate (bpm)", "Resting HR (bpm)", "Sleep (hrs)", "Calories Burned"];
+        const hdrs = ["Date", "Steps", "Heart Rate (bpm)", "Resting HR (bpm)", "Sleep (hrs)", "Calories Burned"];
         const rows = [...history].reverse().map((h) => [
             new Date(h.date).toLocaleDateString(),
             h.steps,
@@ -268,7 +386,7 @@ export default function HealthPage() {
             h.sleepHours,
             h.caloriesBurned,
         ]);
-        const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
+        const csv = [hdrs, ...rows].map((r) => r.join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -279,7 +397,7 @@ export default function HealthPage() {
         setExportLoading(false);
     }
 
-    // ── NEW: Recovery score history from existing data ──
+    // ── Recovery trend ──
     const recoveryTrend = history.map((h) => {
         const sleepScore = Math.min((h.sleepHours / 8) * 40, 40);
         const hrScore = h.heartRate > 0 ? Math.max(0, 30 - Math.abs(h.heartRate - 65) * 0.8) : 15;
@@ -290,7 +408,7 @@ export default function HealthPage() {
         };
     });
 
-    /* ── Prepare chart data ── */
+    /* ── Chart data ── */
     const chartData = history.map((h) => ({
         ...h,
         label: fmtDate(h.date),
@@ -298,6 +416,11 @@ export default function HealthPage() {
     }));
 
     const activeMetricInfo = METRICS.find((m) => m.key === activeMetric)!;
+
+    // ── Friendly range label ──
+    const rangeLabel = isCustomRange && customFrom && customTo
+        ? `${new Date(customFrom).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(customTo).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+        : dateRange === 0 ? "All time" : `Last ${dateRange} days`;
 
     if (loading)
         return (
@@ -316,26 +439,127 @@ export default function HealthPage() {
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Health</h1>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-xl">
-                        {([7, 14, 30, 90, 0] as DateRange[]).map((d) => (
+                <div className="flex flex-col gap-3">
+                    {/* ── Row 1: preset buttons + Log Data ── */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        {/* Preset range pills */}
+                        <div className="flex gap-1 p-1 bg-white/5 border border-white/10 rounded-xl">
+                            {([7, 14, 30, 90, 0] as DateRange[]).map((d) => (
+                                <button
+                                    key={d}
+                                    onClick={() => handlePresetRange(d)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${!isCustomRange && dateRange === d ? "bg-[#c8ff00] text-black" : "text-white/50 hover:text-white"}`}
+                                >
+                                    {d === 0 ? "All" : `${d}d`}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Custom date range button */}
+                        <button
+                            onClick={() => setShowDatePicker((v) => !v)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${isCustomRange ? "bg-[#c8ff00]/15 border-[#c8ff00]/40 text-[#c8ff00]" : "border-white/10 bg-white/5 text-white/50 hover:text-white"}`}
+                        >
+                            📅 Custom
+                            {isCustomRange && (
+                                <span className="ml-1 text-[10px] font-normal opacity-70">
+                                    {rangeLabel}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Clear custom */}
+                        {isCustomRange && (
                             <button
-                                key={d}
-                                onClick={() => setDateRange(d)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${dateRange === d ? "bg-[#c8ff00] text-black" : "text-white/50 hover:text-white"}`}
+                                onClick={clearCustomRange}
+                                className="text-white/30 hover:text-white/70 text-xs px-2 py-1 rounded-lg transition"
+                                title="Clear custom range"
                             >
-                                {d === 0 ? "All" : `${d}d`}
+                                ✕
                             </button>
-                        ))}
+                        )}
+
+                        {msg && <span className="text-[#c8ff00] text-sm">{msg}</span>}
+
+                        <button onClick={() => setShowForm((v) => !v)} className="px-5 py-2.5 rounded-xl bg-[#c8ff00] text-black font-semibold text-sm hover:bg-[#d4ff20] transition">
+                            {showForm ? "Cancel" : "+ Log Data"}
+                        </button>
                     </div>
 
-                    {msg && <span className="text-[#c8ff00] text-sm">{msg}</span>}
+                    {/* ── Row 2: Date picker panel ── */}
+                    <AnimatePresence>
+                        {showDatePicker && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -8, height: 0 }}
+                                animate={{ opacity: 1, y: 0, height: "auto" }}
+                                exit={{ opacity: 0, y: -8, height: 0 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="flex flex-wrap items-end gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                    <div>
+                                        <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-1.5">From</label>
+                                        <input
+                                            type="date"
+                                            value={customFrom}
+                                            max={customTo || new Date().toISOString().slice(0, 10)}
+                                            onChange={(e) => setCustomFrom(e.target.value)}
+                                            className="px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-sm outline-none focus:border-[#c8ff00]/50 transition [color-scheme:dark]"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] text-white/40 uppercase tracking-widest mb-1.5">To</label>
+                                        <input
+                                            type="date"
+                                            value={customTo}
+                                            min={customFrom}
+                                            max={new Date().toISOString().slice(0, 10)}
+                                            onChange={(e) => setCustomTo(e.target.value)}
+                                            className="px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-white text-sm outline-none focus:border-[#c8ff00]/50 transition [color-scheme:dark]"
+                                        />
+                                    </div>
+                                    <motion.button
+                                        whileTap={{ scale: 0.97 }}
+                                        onClick={handleApplyCustom}
+                                        disabled={!customFrom || !customTo}
+                                        className="px-5 py-2 rounded-xl bg-[#c8ff00] text-black font-bold text-sm disabled:opacity-40 transition"
+                                    >
+                                        Apply
+                                    </motion.button>
 
-                    <button onClick={() => setShowForm((v) => !v)} className="px-5 py-2.5 rounded-xl bg-[#c8ff00] text-black font-semibold text-sm hover:bg-[#d4ff20] transition">
-                        {showForm ? "Cancel" : "+ Log Data"}
-                    </button>
+                                    {/* Quick-fill shortcuts */}
+                                    <div className="flex gap-2 flex-wrap">
+                                        {[
+                                            { label: "This week", days: 7 },
+                                            { label: "This month", days: 30 },
+                                            { label: "Last 3 months", days: 90 },
+                                        ].map((s) => {
+                                            const to = new Date().toISOString().slice(0, 10);
+                                            const from = new Date(Date.now() - s.days * 86400000).toISOString().slice(0, 10);
+                                            return (
+                                                <button
+                                                    key={s.label}
+                                                    onClick={() => { setCustomFrom(from); setCustomTo(to); }}
+                                                    className="text-[10px] px-2.5 py-1 rounded-lg border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition"
+                                                >
+                                                    {s.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
+
+            {/* ── Active range badge ── */}
+            {(isCustomRange || true) && (
+                <div className="flex items-center gap-2 text-xs text-white/40">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#c8ff00] inline-block" />
+                    Showing <span className="text-white/70 font-medium">{history.length} records</span> for <span className="text-[#c8ff00] font-medium">{rangeLabel}</span>
+                </div>
+            )}
 
             {/* ── LOG DATA FORM ── */}
             <AnimatePresence>
@@ -390,7 +614,7 @@ export default function HealthPage() {
                 </motion.div>
             )}
 
-            {/* ── TABS (now includes Journal & Export) ── */}
+            {/* ── TABS ── */}
             <div className="flex flex-wrap gap-1 p-1 bg-white/5 border border-white/10 rounded-2xl w-fit">
                 {([
                     { id: "overview", label: "📊 Overview" },
@@ -414,7 +638,7 @@ export default function HealthPage() {
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                     {stats && !stats.noData && (
                         <p className="text-xs text-white/30">
-                            Showing stats for {stats.totalRecords} records over the last {dateRange > 0 ? `${dateRange} days` : "all time"}
+                            Showing stats for {stats.totalRecords} records — {rangeLabel}
                         </p>
                     )}
 
@@ -509,7 +733,6 @@ export default function HealthPage() {
                         )}
                     </div>
 
-                    {/* ── NEW: Recovery Score Trend ── */}
                     {recoveryTrend.length > 1 && (
                         <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-7">
                             <div className="flex items-center justify-between mb-5">
@@ -588,7 +811,7 @@ export default function HealthPage() {
                                     <div className="flex items-center justify-between mb-6">
                                         <div>
                                             <h2 className="text-base sm:text-lg font-semibold">{activeMetricInfo.icon} {activeMetricInfo.label}</h2>
-                                            <p className="text-xs text-white/30 mt-1">{history.length} data points</p>
+                                            <p className="text-xs text-white/30 mt-1">{history.length} data points · {rangeLabel}</p>
                                         </div>
                                         {stats && !stats.noData && (
                                             <div className="text-right">
@@ -708,7 +931,7 @@ export default function HealthPage() {
                         <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
                             <div className="px-5 sm:px-7 py-4 border-b border-white/10 flex items-center justify-between">
                                 <h2 className="text-sm font-semibold">All Records</h2>
-                                <span className="text-xs text-white/30">{history.length} entries</span>
+                                <span className="text-xs text-white/30">{history.length} entries · {rangeLabel}</span>
                             </div>
 
                             <div className="hidden sm:grid grid-cols-6 px-5 sm:px-7 py-3 border-b border-white/5 text-[10px] text-white/30 uppercase tracking-widest">
@@ -754,22 +977,16 @@ export default function HealthPage() {
                 </motion.div>
             )}
 
-            {/* ══════════ NEW: SYMPTOM JOURNAL TAB ══════════ */}
+            {/* ══════════ SYMPTOM JOURNAL TAB ══════════ */}
             {activeTab === "journal" && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
-
-                    {/* Add entry button */}
                     <div className="flex items-center justify-between">
                         <p className="text-xs text-white/30">Track how you feel each day alongside your biometrics.</p>
-                        <button
-                            onClick={() => setJournalOpen(true)}
-                            className="px-4 py-2.5 rounded-xl bg-[#c8ff00] text-black font-semibold text-sm hover:bg-[#d4ff20] transition"
-                        >
+                        <button onClick={() => setJournalOpen(true)} className="px-4 py-2.5 rounded-xl bg-[#c8ff00] text-black font-semibold text-sm hover:bg-[#d4ff20] transition">
                             + Add Entry
                         </button>
                     </div>
 
-                    {/* Journal entries */}
                     {symptoms.length === 0 ? (
                         <div className="text-center py-20 text-white/30">
                             <p className="text-4xl mb-4">🩺</p>
@@ -781,37 +998,23 @@ export default function HealthPage() {
                                 const sevColor = s.severity === 1 ? "#c8ff00" : s.severity === 2 ? "#00BFFF" : "#ff4d6d";
                                 const sevLabel = s.severity === 1 ? "Feeling Good" : s.severity === 2 ? "Moderate" : "Struggling";
                                 return (
-                                    <motion.div
-                                        key={s.id}
-                                        initial={{ opacity: 0, y: 8 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5"
-                                    >
+                                    <motion.div key={s.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-5">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <span className="text-[10px] text-white/30">{fmtDate(s.date, false)}</span>
-                                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${sevColor}20`, color: sevColor }}>
-                                                        {sevLabel}
-                                                    </span>
+                                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: `${sevColor}20`, color: sevColor }}>{sevLabel}</span>
                                                 </div>
                                                 {s.tags.length > 0 && (
                                                     <div className="flex flex-wrap gap-1.5 mb-2">
                                                         {s.tags.map((tag) => (
-                                                            <span key={tag} className="text-[11px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-white/60">
-                                                                {tag}
-                                                            </span>
+                                                            <span key={tag} className="text-[11px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-white/60">{tag}</span>
                                                         ))}
                                                     </div>
                                                 )}
                                                 {s.note && <p className="text-sm text-white/60 leading-relaxed">{s.note}</p>}
                                             </div>
-                                            <button
-                                                onClick={() => deleteSymptom(s.id)}
-                                                className="text-white/15 hover:text-red-400 transition text-sm px-2 py-1 rounded-lg hover:bg-red-400/10 shrink-0"
-                                            >
-                                                ×
-                                            </button>
+                                            <button onClick={() => deleteSymptom(s.id)} className="text-white/15 hover:text-red-400 transition text-sm px-2 py-1 rounded-lg hover:bg-red-400/10 shrink-0">×</button>
                                         </div>
                                     </motion.div>
                                 );
@@ -819,83 +1022,35 @@ export default function HealthPage() {
                         </div>
                     )}
 
-                    {/* Add Journal Entry Modal */}
                     <AnimatePresence>
                         {journalOpen && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                                onClick={(e) => e.target === e.currentTarget && setJournalOpen(false)}
-                            >
-                                <motion.div
-                                    initial={{ scale: 0.93, y: 16 }}
-                                    animate={{ scale: 1, y: 0 }}
-                                    exit={{ scale: 0.93, y: 16 }}
-                                    className="w-full max-w-md bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 space-y-5"
-                                >
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setJournalOpen(false)}>
+                                <motion.div initial={{ scale: 0.93, y: 16 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.93, y: 16 }} className="w-full max-w-md bg-[#0d0d0d] border border-white/15 rounded-3xl p-6 space-y-5">
                                     <div className="flex items-center justify-between">
                                         <h3 className="font-bold">How are you feeling?</h3>
                                         <button onClick={() => setJournalOpen(false)} className="text-white/30 hover:text-white">✕</button>
                                     </div>
-
-                                    {/* Severity */}
                                     <div>
                                         <p className="text-xs text-white/40 uppercase tracking-widest mb-3">Overall Feeling</p>
                                         <div className="grid grid-cols-3 gap-2">
-                                            {([
-                                                { val: 1, label: "😊 Good", color: "#c8ff00" },
-                                                { val: 2, label: "😐 Okay", color: "#00BFFF" },
-                                                { val: 3, label: "😔 Rough", color: "#ff4d6d" },
-                                            ] as const).map((s) => (
-                                                <button
-                                                    key={s.val}
-                                                    onClick={() => setSymptomSeverity(s.val)}
-                                                    className={`py-2.5 rounded-xl text-sm font-medium border transition ${symptomSeverity === s.val ? "border-opacity-50 text-black font-bold" : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"}`}
-                                                    style={symptomSeverity === s.val ? { background: s.color, borderColor: s.color } : {}}
-                                                >
-                                                    {s.label}
-                                                </button>
+                                            {([{ val: 1, label: "😊 Good", color: "#c8ff00" }, { val: 2, label: "😐 Okay", color: "#00BFFF" }, { val: 3, label: "😔 Rough", color: "#ff4d6d" }] as const).map((s) => (
+                                                <button key={s.val} onClick={() => setSymptomSeverity(s.val)} className={`py-2.5 rounded-xl text-sm font-medium border transition ${symptomSeverity === s.val ? "border-opacity-50 text-black font-bold" : "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"}`} style={symptomSeverity === s.val ? { background: s.color, borderColor: s.color } : {}}>{s.label}</button>
                                             ))}
                                         </div>
                                     </div>
-
-                                    {/* Tags */}
                                     <div>
                                         <p className="text-xs text-white/40 uppercase tracking-widest mb-3">Symptoms / Tags</p>
                                         <div className="flex flex-wrap gap-2">
                                             {SYMPTOM_TAGS.map((tag) => (
-                                                <button
-                                                    key={tag}
-                                                    onClick={() => setSelectedTags((prev) =>
-                                                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                                                    )}
-                                                    className={`text-xs px-3 py-1.5 rounded-xl border transition ${selectedTags.includes(tag) ? "bg-[#c8ff00]/15 border-[#c8ff00]/40 text-[#c8ff00]" : "bg-white/5 border-white/10 text-white/40 hover:text-white/70 hover:border-white/20"}`}
-                                                >
-                                                    {tag}
-                                                </button>
+                                                <button key={tag} onClick={() => setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])} className={`text-xs px-3 py-1.5 rounded-xl border transition ${selectedTags.includes(tag) ? "bg-[#c8ff00]/15 border-[#c8ff00]/40 text-[#c8ff00]" : "bg-white/5 border-white/10 text-white/40 hover:text-white/70 hover:border-white/20"}`}>{tag}</button>
                                             ))}
                                         </div>
                                     </div>
-
-                                    {/* Note */}
                                     <div>
                                         <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Notes (optional)</p>
-                                        <textarea
-                                            value={symptomNote}
-                                            onChange={(e) => setSymptomNote(e.target.value)}
-                                            placeholder="How's the body feeling? Any soreness, stress, or wins?"
-                                            rows={3}
-                                            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition resize-none placeholder:text-white/20"
-                                        />
+                                        <textarea value={symptomNote} onChange={(e) => setSymptomNote(e.target.value)} placeholder="How's the body feeling?" rows={3} className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-sm outline-none focus:border-[#c8ff00]/40 transition resize-none placeholder:text-white/20" />
                                     </div>
-
-                                    <motion.button
-                                        whileTap={{ scale: 0.97 }}
-                                        onClick={saveSymptom}
-                                        className="w-full py-3 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm"
-                                    >
+                                    <motion.button whileTap={{ scale: 0.97 }} onClick={saveSymptom} className="w-full py-3 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm">
                                         {journalSaved ? "✓ Saved!" : "Save Entry"}
                                     </motion.button>
                                 </motion.div>
@@ -905,20 +1060,18 @@ export default function HealthPage() {
                 </motion.div>
             )}
 
-            {/* ══════════ NEW: EXPORT TAB ══════════ */}
+            {/* ══════════ EXPORT TAB ══════════ */}
             {activeTab === "export" && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 max-w-2xl">
                     <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 space-y-6">
                         <div>
                             <h2 className="text-lg font-bold mb-1">Export Health Data</h2>
-                            <p className="text-white/40 text-sm">Download your health records as a CSV file for use in spreadsheets or other tools.</p>
+                            <p className="text-white/40 text-sm">Download your health records as a CSV file.</p>
                         </div>
-
-                        {/* Summary */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {[
                                 { label: "Total Records", value: history.length, color: "#c8ff00" },
-                                { label: "Date Range", value: dateRange === 0 ? "All Time" : `Last ${dateRange} days`, color: "#00BFFF" },
+                                { label: "Date Range", value: rangeLabel, color: "#00BFFF" },
                                 { label: "Metrics", value: "5 fields", color: "#FF8C00" },
                             ].map((item) => (
                                 <div key={item.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
@@ -927,63 +1080,29 @@ export default function HealthPage() {
                                 </div>
                             ))}
                         </div>
-
-                        {/* What's included */}
-                        <div>
-                            <p className="text-xs text-white/40 uppercase tracking-widest mb-3">What's included</p>
-                            <div className="space-y-2">
-                                {["Date & Time", "Steps", "Heart Rate (bpm)", "Resting HR (bpm)", "Sleep (hours)", "Calories Burned (kcal)"].map((field) => (
-                                    <div key={field} className="flex items-center gap-2 text-sm text-white/60">
-                                        <span className="text-[#c8ff00] text-xs">✓</span>
-                                        {field}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={exportCSV}
-                            disabled={exportLoading || history.length === 0}
-                            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm disabled:opacity-40 transition flex items-center justify-center gap-2"
-                        >
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={exportCSV} disabled={exportLoading || history.length === 0} className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-[#c8ff00] text-black font-bold text-sm disabled:opacity-40 transition flex items-center justify-center gap-2">
                             {exportLoading ? "Preparing..." : `⬇️ Download CSV (${history.length} records)`}
                         </motion.button>
-
-                        {history.length === 0 && (
-                            <p className="text-xs text-white/30">No data available for the selected range. Try expanding the date range.</p>
-                        )}
+                        {history.length === 0 && <p className="text-xs text-white/30">No data available for the selected range.</p>}
                     </div>
 
-                    {/* Symptom journal export */}
                     {symptoms.length > 0 && (
                         <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 sm:p-8 space-y-4">
                             <div>
                                 <h3 className="text-base font-bold mb-1">Symptom Journal</h3>
                                 <p className="text-white/40 text-sm">{symptoms.length} journal entries available.</p>
                             </div>
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => {
-                                    const rows = symptoms.map((s) => [
-                                        new Date(s.date).toLocaleDateString(),
-                                        s.severity === 1 ? "Good" : s.severity === 2 ? "Moderate" : "Struggling",
-                                        s.tags.join("; "),
-                                        s.note,
-                                    ]);
-                                    const csv = [["Date", "Feeling", "Tags", "Notes"], ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
-                                    const blob = new Blob([csv], { type: "text/csv" });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = `smartlife-journal-${new Date().toISOString().slice(0, 10)}.csv`;
-                                    a.click();
-                                    URL.revokeObjectURL(url);
-                                }}
-                                className="px-6 py-3 rounded-2xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm font-medium transition"
-                            >
+                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => {
+                                const rows = symptoms.map((s) => [new Date(s.date).toLocaleDateString(), s.severity === 1 ? "Good" : s.severity === 2 ? "Moderate" : "Struggling", s.tags.join("; "), s.note]);
+                                const csv = [["Date", "Feeling", "Tags", "Notes"], ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+                                const blob = new Blob([csv], { type: "text/csv" });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `smartlife-journal-${new Date().toISOString().slice(0, 10)}.csv`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                            }} className="px-6 py-3 rounded-2xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm font-medium transition">
                                 ⬇️ Download Journal CSV
                             </motion.button>
                         </div>
@@ -994,20 +1113,8 @@ export default function HealthPage() {
             {/* ── DELETE CONFIRM MODAL ── */}
             <AnimatePresence>
                 {deleteId && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-                        onClick={() => setDeleteId(null)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center"
-                        >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={() => setDeleteId(null)}>
+                        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center">
                             <p className="text-3xl mb-4">🗑️</p>
                             <h3 className="text-lg font-bold mb-2">Delete Record?</h3>
                             <p className="text-white/50 text-sm mb-6">This action cannot be undone.</p>
