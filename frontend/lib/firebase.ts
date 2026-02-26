@@ -1,5 +1,6 @@
 // ============================================================
 // frontend/lib/firebase.ts
+// Uses signInWithPopup — avoids authDomain/redirect issues on Vercel
 // ============================================================
 
 import { initializeApp, getApps } from "firebase/app";
@@ -11,9 +12,7 @@ import {
     sendPasswordResetEmail,
     setPersistence,
     browserLocalPersistence,
-    signInWithRedirect,
     signInWithPopup,
-    getRedirectResult,
 } from "firebase/auth";
 
 // ─────────────────────────────────────────────
@@ -47,38 +46,25 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
 // ============================================================
-// GOOGLE LOGIN
-// Uses redirect flow (works reliably on Vercel deployments).
-// Falls back to popup on localhost for faster dev iteration.
+// GOOGLE LOGIN — Popup (works on all domains, no authDomain config needed)
+// Returns backend JWT data directly
 // ============================================================
 export async function signInWithGoogle() {
-    const isLocalhost =
-        typeof window !== "undefined" &&
-        (window.location.hostname === "localhost" ||
-            window.location.hostname === "127.0.0.1");
+    const result = await signInWithPopup(firebaseAuth, googleProvider);
+    const idToken = await result.user.getIdToken();
 
-    if (isLocalhost) {
-        // Popup is faster in local dev and avoids localhost redirect issues
-        const result = await signInWithPopup(firebaseAuth, googleProvider);
-        const idToken = await result.user.getIdToken();
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+        }
+    );
 
-        const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken }),
-            }
-        );
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Backend authentication failed.");
-        return data; // { token, ... }
-    }
-
-    // Production (Vercel): use redirect flow
-    await signInWithRedirect(firebaseAuth, googleProvider);
-    // NOTE: page reloads — caller should not expect a return value
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Backend authentication failed.");
+    return data; // { token, userId, name, email, ... }
 }
 
 // ============================================================

@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { signInWithGoogle, loginWithEmail } from "@/lib/firebase";
-import { getRedirectResult } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -18,92 +16,23 @@ export default function LoginPage() {
     const [gLoading, setGLoading] = useState(false);
     const [error, setError] = useState("");
 
-    const isHandlingAuth = useRef(false);
-
-    // ── Helper: exchange Firebase idToken for backend JWT ──────────
-    const exchangeToken = async (user: NonNullable<typeof firebaseAuth.currentUser>) => {
-        if (isHandlingAuth.current) return;
-        isHandlingAuth.current = true;
-
+    // ── Google Login (popup — works on all domains) ─────────────────
+    const handleGoogle = async () => {
         try {
-            const idToken = await user.getIdToken(true); // force refresh
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ idToken }),
-                }
-            );
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Backend authentication failed.");
-
-            // Store token BEFORE calling login() to avoid any race with AuthContext
-            localStorage.setItem("token", data.token);
+            setGLoading(true);
+            setError("");
+            // signInWithGoogle now uses popup AND calls backend — returns JWT directly
+            const data = await signInWithGoogle();
             login(data.token);
-
-            // Clear the pending flag
-            sessionStorage.removeItem("pendingGoogleRedirect");
-
             router.replace("/dashboard");
         } catch (err: any) {
-            console.error("Auth exchange failed:", err);
-            setError(err.message || "Authentication failed. Please try again.");
-            isHandlingAuth.current = false;
+            // User closed popup → err.code === 'auth/popup-closed-by-user'
+            if (err?.code !== "auth/popup-closed-by-user") {
+                setError(err.message || "Google sign-in failed.");
+            }
             setGLoading(false);
-            sessionStorage.removeItem("pendingGoogleRedirect");
         }
     };
-
-    useEffect(() => {
-        // If we set this flag before redirecting to Google, show spinner immediately
-        const pending = sessionStorage.getItem("pendingGoogleRedirect");
-        if (pending) {
-            setGLoading(true);
-        }
-
-        const handleRedirectAndListen = async () => {
-            try {
-                // MUST be called to consume the Google redirect result
-                const result = await getRedirectResult(firebaseAuth);
-
-                if (result?.user) {
-                    setGLoading(true);
-                    await exchangeToken(result.user);
-                    return; // success — don't register the onAuthStateChanged listener
-                }
-
-                // No redirect result — clear the pending flag if it was stale
-                sessionStorage.removeItem("pendingGoogleRedirect");
-                setGLoading(false);
-
-            } catch (err: any) {
-                console.error("getRedirectResult error:", err);
-                setError(err.message || "Google sign-in failed.");
-                setGLoading(false);
-                sessionStorage.removeItem("pendingGoogleRedirect");
-            }
-
-            // Only set up onAuthStateChanged AFTER getRedirectResult resolves.
-            // This prevents it from firing for the same Google login event.
-            const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
-                if (!user || isHandlingAuth.current) return;
-                // This only fires for email/password logins — Google is handled above
-                // DO NOT call exchangeToken here; email login calls login() directly
-            });
-
-            return unsubscribe;
-        };
-
-        let unsubscribeFn: (() => void) | undefined;
-        handleRedirectAndListen().then((unsub) => {
-            if (unsub) unsubscribeFn = unsub;
-        });
-
-        return () => {
-            unsubscribeFn?.();
-        };
-    }, []);
 
     // ── Email / Password Login ──────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -119,21 +48,6 @@ export default function LoginPage() {
             setError(err.message || "Login failed.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    // ── Google Login (redirect flow) ────────────────────────────────
-    const handleGoogle = async () => {
-        try {
-            setGLoading(true);
-            setError("");
-            // Set flag BEFORE redirect so we show spinner when page reloads
-            sessionStorage.setItem("pendingGoogleRedirect", "1");
-            await signInWithGoogle(); // triggers redirect — page reloads after Google
-        } catch (err: any) {
-            setError(err.message || "Google sign-in failed.");
-            setGLoading(false);
-            sessionStorage.removeItem("pendingGoogleRedirect");
         }
     };
 
