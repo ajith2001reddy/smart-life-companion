@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import WeatherCard from "@/components/WeatherCard";
 import { useAuth } from "@/context/AuthContext";
 import type { Variants } from "framer-motion";
+
 type Stats = {
     performanceScore: number;
     weeklyVolume: number;
@@ -58,7 +59,7 @@ const fadeUp: Variants = {
         y: 0,
         transition: {
             duration: 0.5,
-            ease: [0.16, 1, 0.3, 1], // ← FIXED
+            ease: [0.16, 1, 0.3, 1],
         },
     },
 };
@@ -93,35 +94,50 @@ export default function DashboardPage() {
     }, []);
 
     useEffect(() => {
+        // Don't attempt any authenticated fetches without a token
+        if (!token) return;
+
         async function load() {
             try {
-                const s = await fetch(`${base}/api/dashboard`).then((r) => r.json());
-                setStats(s);
+                // ✅ FIX: Send Authorization header with dashboard request
+                const res = await fetch(`${base}/api/dashboard`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                const s = await res.json();
 
-                // Load health snapshot
-                if (token) {
-                    const h = await fetch(`${base}/api/health/latest`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }).then((r) => r.ok ? r.json() : null);
-                    if (h) setHealth(h);
+                // ✅ FIX: Guard — only set stats if the response is valid
+                if (s && Array.isArray(s.weeklyStats)) {
+                    setStats(s);
+                } else {
+                    console.error("Dashboard returned unexpected data:", s);
                 }
 
+                // Load health snapshot
+                const h = await fetch(`${base}/api/health/latest`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                }).then((r) => r.ok ? r.json() : null);
+                if (h) setHealth(h);
+
+                // Weather (no auth needed)
                 try {
                     const pos = await new Promise<GeolocationPosition>((res, rej) =>
                         navigator.geolocation.getCurrentPosition(res, rej)
                     );
-                    const w = await fetch(`${base}/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`).then((r) => r.json());
+                    const w = await fetch(
+                        `${base}/api/weather?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`
+                    ).then((r) => r.json());
                     setWeather(w);
                 } catch {
                     const w = await fetch(`${base}/api/weather?city=New York`).then((r) => r.json());
                     setWeather(w);
                 }
             } catch (e) {
-                console.error(e);
+                console.error("Dashboard load error:", e);
             }
         }
+
         load();
-    }, [token]);
+    }, [token]); // ✅ Re-fetch whenever token becomes available
 
     function handleQuickLogSave() {
         setLogSaved(true);
