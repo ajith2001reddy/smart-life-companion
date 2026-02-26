@@ -110,7 +110,7 @@ export default function CoachPage() {
             }
 
             const data = await res.json();
-            const full = data?.message || "Sorry, something went wrong.";
+            const full = data?.reply || "Sorry, something went wrong.";
             const aiTimestamp = new Date();
 
             setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: aiTimestamp }]);
