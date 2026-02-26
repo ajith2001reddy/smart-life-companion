@@ -48,41 +48,33 @@ export default function LoginPage() {
     };
 
     useEffect(() => {
-        // ✅ KEY FIX: Handle the redirect result FIRST before setting up the listener
-        const handleRedirectAndListen = async () => {
+        const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+            if (!user) return;
+
             try {
-                // This MUST be called to complete the Google redirect flow.
-                // It resolves with the user credential if we just came back from Google OAuth.
-                const result = await getRedirectResult(firebaseAuth);
-                if (result?.user) {
-                    setGLoading(true);
-                    await exchangeToken(result.user);
-                    return; // done — don't need the listener to also fire
-                }
-            } catch (err: any) {
-                console.error("getRedirectResult error:", err);
-                setError(err.message || "Google sign-in failed.");
-                setGLoading(false);
+                const idToken = await user.getIdToken();
+
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/firebase-login`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ idToken }),
+                    }
+                );
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                login(data.token);
+                router.replace("/dashboard");
+
+            } catch (err) {
+                console.error("Exchange failed:", err);
             }
-
-            // ✅ Only set up the onAuthStateChanged listener AFTER redirect is handled.
-            // This prevents it from double-firing when the redirect result also triggers it.
-            const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
-                if (!user || isHandlingAuth.current) return;
-                await exchangeToken(user);
-            });
-
-            return unsubscribe;
-        };
-
-        let unsubscribeFn: (() => void) | undefined;
-        handleRedirectAndListen().then((unsub) => {
-            if (unsub) unsubscribeFn = unsub;
         });
 
-        return () => {
-            unsubscribeFn?.();
-        };
+        return () => unsubscribe();
     }, []);
 
     // Email / Password Login
