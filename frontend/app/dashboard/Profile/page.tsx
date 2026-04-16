@@ -91,6 +91,42 @@ export default function ProfilePage() {
 
     const [activityLog, setActivityLog] = useState<ActivityEntry[]>([]);
 
+    // ── FEEDBACK STATE ──
+    const [fbText, setFbText] = useState("");
+    const [fbRating, setFbRating] = useState(5);
+    const [fbSubmitting, setFbSubmitting] = useState(false);
+    const [fbSuccess, setFbSuccess] = useState(false);
+
+    const TABS = [
+        { id: "account", label: "👤 Account" },
+        { id: "goals", label: "🎯 Goals" },
+        { id: "notifications", label: "🔔 Alerts" },
+        { id: "activity", label: "🕐 Activity" },
+        { id: "support", label: "💬 Support" },
+    ] as const;
+
+    async function submitFeedback() {
+        if (!fbText.trim()) return;
+        setFbSubmitting(true);
+        try {
+            const res = await fetch(`${base}/api/feedback/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ text: fbText, rating: fbRating }),
+            });
+            if (res.ok) {
+                setFbText("");
+                setFbRating(5);
+                setFbSuccess(true);
+                setTimeout(() => setFbSuccess(false), 3000);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setFbSubmitting(false);
+        }
+    }
+
     // ── Load profile + goals ──────────────────────────────────
 
     useEffect(() => {
@@ -247,41 +283,6 @@ export default function ProfilePage() {
         ? profile.name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
         : "U";
 
-    const TABS = [
-        { id: "account", label: "👤 Account" },
-        { id: "goals", label: "🎯 Goals" },
-        { id: "notifications", label: "🔔 Alerts" },
-        { id: "activity", label: "🕐 Activity" },
-        { id: "support", label: "💬 Support" },
-    ] as const;
-
-    // ── FEEDBACK STATE ──
-    const [fbText, setFbText] = useState("");
-    const [fbRating, setFbRating] = useState(5);
-    const [fbSubmitting, setFbSubmitting] = useState(false);
-    const [fbSuccess, setFbSuccess] = useState(false);
-
-    async function submitFeedback() {
-        if (!fbText.trim()) return;
-        setFbSubmitting(true);
-        try {
-            const res = await fetch(`${base}/api/feedback/submit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ text: fbText, rating: fbRating }),
-            });
-            if (res.ok) {
-                setFbText("");
-                setFbRating(5);
-                setFbSuccess(true);
-                setTimeout(() => setFbSuccess(false), 3000);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setFbSubmitting(false);
-        }
-    }
 
     return (
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-7 max-w-3xl mx-auto px-2 sm:px-0">
