@@ -80,7 +80,7 @@ export default function ProfilePage() {
     const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
     const [copied, setCopied] = useState(false);
 
-    const [activeTab, setActiveTab] = useState<"account" | "goals" | "notifications" | "activity">("account");
+    const [activeTab, setActiveTab] = useState<"account" | "goals" | "notifications" | "activity" | "support">("account");
 
     const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS);
     const [goalSaved, setGoalSaved] = useState(false);
