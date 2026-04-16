@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // ============================================================
 // frontend/app/dashboard/Profile/page.tsx  (FULL REPLACEMENT)
@@ -252,7 +252,36 @@ export default function ProfilePage() {
         { id: "goals", label: "🎯 Goals" },
         { id: "notifications", label: "🔔 Alerts" },
         { id: "activity", label: "🕐 Activity" },
+        { id: "support", label: "💬 Support" },
     ] as const;
+
+    // ── FEEDBACK STATE ──
+    const [fbText, setFbText] = useState("");
+    const [fbRating, setFbRating] = useState(5);
+    const [fbSubmitting, setFbSubmitting] = useState(false);
+    const [fbSuccess, setFbSuccess] = useState(false);
+
+    async function submitFeedback() {
+        if (!fbText.trim()) return;
+        setFbSubmitting(true);
+        try {
+            const res = await fetch(`${base}/api/feedback/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ text: fbText, rating: fbRating }),
+            });
+            if (res.ok) {
+                setFbText("");
+                setFbRating(5);
+                setFbSuccess(true);
+                setTimeout(() => setFbSuccess(false), 3000);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setFbSubmitting(false);
+        }
+    }
 
     return (
         <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-7 max-w-3xl mx-auto px-2 sm:px-0">
@@ -541,6 +570,53 @@ export default function ProfilePage() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* ── SUPPORT ── */}
+                {activeTab === "support" && (
+                    <motion.div key="support" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                        <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-5 sm:p-8 space-y-6">
+                            <div>
+                                <h3 className="text-base font-bold mb-1">Give Feedback</h3>
+                                <p className="text-white/40 text-sm">We'd love to hear how Smart Life is helping you.</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-white/40 uppercase tracking-widest mb-3 block">Rating</label>
+                                <div className="flex gap-2 text-2xl">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            onClick={() => setFbRating(star)}
+                                            className={`transition-transform hover:scale-125 ${fbRating >= star ? "text-[#c8ff00]" : "text-white/10"}`}
+                                        >
+                                            ★
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs text-white/40 uppercase tracking-widest mb-2 block">Your Comments</label>
+                                <textarea
+                                    value={fbText}
+                                    onChange={(e) => setFbText(e.target.value)}
+                                    placeholder="Tell us what you think..."
+                                    className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[#c8ff00]/50 transition placeholder:text-white/10"
+                                />
+                            </div>
+
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={submitFeedback}
+                                disabled={fbSubmitting || !fbText.trim()}
+                                className="bg-[#c8ff00] text-black px-8 py-3 rounded-2xl font-bold text-sm disabled:opacity-50"
+                            >
+                                {fbSubmitting ? "Sending..." : fbSuccess ? "✓ Feedback Sent!" : "Submit Feedback"}
+                            </motion.button>
                         </div>
                     </motion.div>
                 )}

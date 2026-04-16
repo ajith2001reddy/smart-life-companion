@@ -3,6 +3,8 @@ const router = express.Router();
 const Feedback = require("../models/Feedback");
 const OpenAI = require("openai");
 
+const auth = require("../middleware/auth");
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // GET all reviews
@@ -12,6 +14,34 @@ router.get("/", async (req, res) => {
         res.json(reviews);
     } catch (err) {
         res.status(500).json({ error: "Failed to fetch reviews" });
+    }
+});
+
+// POST: Submit user feedback
+router.post("/submit", auth, async (req, res) => {
+    try {
+        const { text, rating, metadata } = req.body;
+        const userId = req.user.userId;
+
+        // Fetch user's name for the author field
+        const User = require("../models/User");
+        const user = await User.findById(userId);
+
+        const feedback = new Feedback({
+            user: userId,
+            author: user ? user.name : "Authenticated User",
+            text,
+            rating,
+            metadata,
+            status: "pending",
+            sentiment: "Pending"
+        });
+
+        await feedback.save();
+        res.json({ message: "Feedback submitted successfully", feedback });
+    } catch (err) {
+        console.error("Submission error:", err);
+        res.status(500).json({ error: "Feedback submission failed" });
     }
 });
 
