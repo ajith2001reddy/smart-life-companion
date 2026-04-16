@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 // frontend/app/dashboard/layout.tsx  (UPDATED)
 // Added: Workout nav item, ErrorBoundary wrapping
@@ -30,6 +30,9 @@ const navItems = [
     { name: "Analytics", href: "/dashboard/analytics", icon: "📊" },
     { name: "Nutrition", href: "/dashboard/nutrition", icon: "🥗" },
     { name: "Health", href: "/dashboard/health", icon: "❤️" },
+    { name: "Feedback", href: "/dashboard/feedback", icon: "💬" },
+    { name: "Insights", href: "/dashboard/insights", icon: "🧠" },
+    { name: "Arch", href: "/dashboard/architecture", icon: "🏗️" },
     { name: "Profile", href: "/dashboard/Profile", icon: "👤" },
 ];
 
@@ -42,8 +45,12 @@ const pageTitles: Record<string, string> = {
     "/dashboard/analytics": "Analytics",
     "/dashboard/nutrition": "Nutrition",
     "/dashboard/health": "Health",
+    "/dashboard/feedback": "Feedback Engine",
+    "/dashboard/insights": "AI Insights",
+    "/dashboard/architecture": "System Architecture",
     "/dashboard/profile": "Profile",
 };
+
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const pathname = usePathname();

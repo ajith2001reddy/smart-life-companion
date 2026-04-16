@@ -1,4 +1,4 @@
-﻿require("dotenv").config();
+require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
@@ -15,6 +15,8 @@ const healthRoute = require("./routes/health");
 const authRoute = require("./routes/auth");
 const foodScanRoute = require("./routes/foodScan");
 const workoutRoute = require("./routes/workout");
+const feedbackRoute = require("./routes/feedback");
+
 
 const Health = require("./models/health");
 const User = require("./models/User");
@@ -84,6 +86,8 @@ app.use("/api/health", healthRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/food-scan", foodScanRoute);
 app.use("/api/workout", workoutRoute);
+app.use("/api/feedback", feedbackRoute);
+
 app.use("/uploads", express.static("uploads"));
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
